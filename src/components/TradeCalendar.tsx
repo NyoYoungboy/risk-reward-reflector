@@ -77,19 +77,19 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
         classNames={{
           months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
           month: "space-y-4 w-full",
-          caption: "flex justify-center pt-1 relative items-center text-lg font-bold",
+          caption: "flex justify-center pt-1 relative items-center text-lg font-bold h-16", // Increased height to match nav arrows
           caption_label: "text-base font-medium",
-          nav: "space-x-1 flex items-center",
+          nav: "space-x-1 flex items-center h-16", // Explicitly set nav height
           nav_button: cn(
-            "h-9 w-9 bg-transparent p-0 opacity-75 hover:opacity-100 text-lg"
+            "h-16 w-16 bg-transparent p-0 opacity-75 hover:opacity-100 text-lg" // Increased size to 16 (64px)
           ),
           table: "w-full border-collapse space-y-1",
           head_row: "flex w-full",
-          head_cell: "text-primary font-semibold rounded-md w-12 sm:w-14 md:w-16 font-normal text-sm px-0 py-2",
+          head_cell: "text-primary font-semibold rounded-md w-full font-normal text-sm px-0 py-2",
           row: "flex w-full mt-2",
-          cell: "h-12 sm:h-16 md:h-24 w-12 sm:w-14 md:w-16 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+          cell: "h-24 w-full text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
           day: cn(
-            "h-12 sm:h-16 md:h-24 w-12 sm:w-14 md:w-16 p-0 font-normal aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground"
+            "h-24 w-full p-0 font-normal aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground text-lg" // Increased text size and full width
           ),
           day_range_end: "day-range-end",
           day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
@@ -101,8 +101,8 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
         }}
         components={{
           DayContent: ({ date }) => (
-            <div className="h-full w-full flex flex-col p-1">
-              <span className="text-sm font-medium mb-1">{format(date, "d")}</span>
+            <div className="h-full w-full flex flex-col p-2">
+              <span className="text-lg font-medium mb-1">{format(date, "d")}</span>
               {getDayContent(date)}
             </div>
           ),
