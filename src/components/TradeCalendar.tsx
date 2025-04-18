@@ -73,7 +73,7 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
         mode="single"
         selected={selectedDate}
         onSelect={handleDayClick}
-        className="rounded-md border"
+        className="rounded-md border w-full max-w-4xl mx-auto [&_.rdp-cell]:h-24 [&_.rdp-table]:w-full [&_.rdp-head_th]:!px-0 [&_.rdp-day_div]:h-full [&_.rdp-day_div]:w-full"
         components={{
           DayContent: ({ date }) => getDayContent(date),
         }}
