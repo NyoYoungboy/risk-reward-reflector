@@ -1,14 +1,19 @@
-// Update this page (the content is just a fallback if you fail to update the page)
 
-const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
-    </div>
-  );
-};
+import React, { useState } from "react";
+import { TradeCalendar } from "@/components/TradeCalendar";
+import type { DailyTrades, Trade } from "@/types/trade";
+import { format } from "date-fns";
 
-export default Index;
+export default function Index() {
+  const [trades, setTrades] = useState<DailyTrades>({});
+
+  const handleAddTrade = (trade: Trade) => {
+    const dateStr = format(trade.date, "yyyy-MM-dd");
+    setTrades((prev) => ({
+      ...prev,
+      [dateStr]: [...(prev[dateStr] || []), trade],
+    }));
+  };
+
+  return <TradeCalendar trades={trades} onAddTrade={handleAddTrade} />;
+}
