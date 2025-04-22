@@ -11,12 +11,23 @@ import { format, startOfWeek, endOfWeek, isSunday, isLastDayOfMonth, startOfMont
 import { TradeForm } from "./TradeForm";
 import { DailyTrades, Trade } from "@/types/trade";
 import { Button } from "./ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -29,6 +40,7 @@ import {
 interface TradeCalendarProps {
   trades: DailyTrades;
   onAddTrade: (trade: Trade) => void;
+  onDeleteTrade: (tradeId: string, date: Date) => void;
 }
 
 interface WeeklyReflection {
@@ -38,7 +50,7 @@ interface WeeklyReflection {
   currency: string;
 }
 
-export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
+export function TradeCalendar({ trades, onAddTrade, onDeleteTrade }: TradeCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isWeeklyReflectionOpen, setIsWeeklyReflectionOpen] = useState(false);
@@ -162,6 +174,14 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
     });
     
     setIsWeeklyReflectionOpen(false);
+  };
+
+  const handleDeleteTrade = (tradeId: string, date: Date) => {
+    onDeleteTrade(tradeId, date);
+    toast({
+      title: "Trade Deleted",
+      description: "The trade has been successfully deleted."
+    });
   };
 
   const getDayContent = (day: Date) => {
@@ -353,12 +373,38 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
                     <div key={trade.id} className="p-4 border rounded-lg">
                       <div className="flex justify-between items-center">
                         <span className="font-medium">{trade.ticker}</span>
-                        <span className={cn(
-                          "font-bold",
-                          trade.pnl > 0 ? "text-green-500" : "text-red-500"
-                        )}>
-                          {trade.pnl.toFixed(2)} {trade.currency}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "font-bold",
+                            trade.pnl > 0 ? "text-green-500" : "text-red-500"
+                          )}>
+                            {trade.pnl.toFixed(2)} {trade.currency}
+                          </span>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the trade.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-red-500 hover:bg-red-600"
+                                  onClick={() => handleDeleteTrade(trade.id, selectedDate)}
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                       <div className="mt-2 text-sm text-muted-foreground">
                         <div>Risk: {trade.riskR}R</div>

@@ -23,6 +23,14 @@ export default function Index() {
     }));
   };
 
+  const handleDeleteTrade = (tradeId: string, date: Date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    setTrades((prev) => ({
+      ...prev,
+      [dateStr]: prev[dateStr].filter((trade) => trade.id !== tradeId),
+    }));
+  };
+
   const handleSaveReflection = (reflection: WeeklyReflection) => {
     const existingIndex = weeklyReflections.findIndex(
       (r) => r.weekEndDate === reflection.weekEndDate
@@ -40,7 +48,8 @@ export default function Index() {
   return (
     <TradeCalendar 
       trades={trades} 
-      onAddTrade={handleAddTrade} 
+      onAddTrade={handleAddTrade}
+      onDeleteTrade={handleDeleteTrade} 
     />
   );
 }
