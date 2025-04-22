@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -13,10 +14,18 @@ import { Button } from "./ui/button";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 interface TradeCalendarProps {
   trades: DailyTrades;
   onAddTrade: (trade: Trade) => void;
+}
+
+interface WeeklyReflection {
+  weekEndDate: string;
+  reflection: string;
+  pnl: number;
+  currency: string;
 }
 
 export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
@@ -24,20 +33,43 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isWeeklyReflectionOpen, setIsWeeklyReflectionOpen] = useState(false);
   const [weeklyReflection, setWeeklyReflection] = useState("");
+  const [weeklyReflections, setWeeklyReflections] = useState<WeeklyReflection[]>([]);
+  const [currentWeekPnL, setCurrentWeekPnL] = useState(0);
+  const [currentWeekCurrency, setCurrentWeekCurrency] = useState("USD");
+  const { toast } = useToast();
 
   const handleDayClick = (date: Date) => {
     if (isSunday(date)) {
       const weekStart = startOfWeek(date, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
       let weeklyPnL = 0;
+      let currency = "USD";
 
       // Calculate weekly PnL
-      for (let d = weekStart; d <= weekEnd; d.setDate(d.getDate() + 1)) {
+      for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
         const dateStr = format(d, "yyyy-MM-dd");
         const dayTrades = trades[dateStr] || [];
-        weeklyPnL += dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
+        
+        if (dayTrades.length > 0) {
+          weeklyPnL += dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
+          // Use currency from the first trade we find
+          if (!currency || currency === "USD") {
+            currency = dayTrades[0].currency;
+          }
+        }
       }
 
+      // Check if there's an existing reflection for this week
+      const weekEndStr = format(date, "yyyy-MM-dd");
+      const existingReflection = weeklyReflections.find(
+        (r) => r.weekEndDate === weekEndStr
+      );
+
+      // Set the reflection text from existing data or empty
+      setWeeklyReflection(existingReflection?.reflection || "");
+      setCurrentWeekPnL(weeklyPnL);
+      setCurrentWeekCurrency(currency);
+      
       // Show weekly reflection dialog
       setSelectedDate(date);
       setIsWeeklyReflectionOpen(true);
@@ -53,9 +85,80 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
     setIsDialogOpen(false);
   };
 
+  const handleSaveReflection = () => {
+    if (!selectedDate) return;
+    
+    const weekEndDate = format(selectedDate, "yyyy-MM-dd");
+    
+    // Update existing reflection or add new one
+    const existingIndex = weeklyReflections.findIndex(
+      (r) => r.weekEndDate === weekEndDate
+    );
+    
+    if (existingIndex >= 0) {
+      const updatedReflections = [...weeklyReflections];
+      updatedReflections[existingIndex] = {
+        ...updatedReflections[existingIndex],
+        reflection: weeklyReflection,
+        pnl: currentWeekPnL,
+        currency: currentWeekCurrency
+      };
+      setWeeklyReflections(updatedReflections);
+    } else {
+      setWeeklyReflections([
+        ...weeklyReflections,
+        {
+          weekEndDate,
+          reflection: weeklyReflection,
+          pnl: currentWeekPnL,
+          currency: currentWeekCurrency
+        }
+      ]);
+    }
+    
+    toast({
+      title: "Reflection Saved",
+      description: "Your weekly reflection has been saved."
+    });
+    
+    setIsWeeklyReflectionOpen(false);
+  };
+
   const getDayContent = (day: Date) => {
     const dateStr = format(day, "yyyy-MM-dd");
     const dayTrades = trades[dateStr] || [];
+    
+    // For Sundays, check if there's a reflection and show weekly PnL
+    if (isSunday(day)) {
+      const weekReflection = weeklyReflections.find(
+        (r) => r.weekEndDate === dateStr
+      );
+      
+      // If there's a reflection, show a special indicator
+      const hasReflection = !!weekReflection;
+      
+      // If it's Sunday but no trades for the week, still show the reflection status
+      if (dayTrades.length === 0) {
+        return hasReflection ? (
+          <div className="w-full h-full flex flex-col items-center justify-center">
+            <div className="text-xs font-medium text-violet-500">
+              Week Reflection Saved
+            </div>
+            {weekReflection && (
+              <div className="text-xs font-medium">
+                {weekReflection.pnl.toFixed(2)} {weekReflection.currency}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center">
+            <div className="text-xs font-medium text-gray-400">
+              Weekly Summary
+            </div>
+          </div>
+        );
+      }
+    }
     
     if (dayTrades.length === 0) return null;
 
@@ -153,8 +256,16 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="text-lg">
-              Weekly P&L Summary for {selectedDate ? format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "PP") : ""} - {selectedDate ? format(selectedDate, "PP") : ""}
+            <div className="text-lg font-medium flex justify-between items-center">
+              <span>
+                Weekly P&L Summary for {selectedDate ? format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "PP") : ""} - {selectedDate ? format(selectedDate, "PP") : ""}
+              </span>
+              <span className={cn(
+                "font-bold",
+                currentWeekPnL > 0 ? "text-green-500" : "text-red-500"
+              )}>
+                {currentWeekPnL.toFixed(2)} {currentWeekCurrency}
+              </span>
             </div>
             <Textarea
               placeholder="Reflect on your trading week. What went well? What could be improved? Any patterns you noticed?"
@@ -166,10 +277,7 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
               <Button variant="outline" onClick={() => setIsWeeklyReflectionOpen(false)}>
                 Close
               </Button>
-              <Button onClick={() => {
-                setWeeklyReflection("");
-                setIsWeeklyReflectionOpen(false);
-              }}>
+              <Button onClick={handleSaveReflection}>
                 Save Reflection
               </Button>
             </div>
