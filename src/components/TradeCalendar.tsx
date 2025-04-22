@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -7,12 +6,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { format } from "date-fns";
+import { format, startOfWeek, endOfWeek, isSunday } from "date-fns";
 import { TradeForm } from "./TradeForm";
 import { DailyTrades, Trade } from "@/types/trade";
 import { Button } from "./ui/button";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Textarea } from "./ui/textarea";
 
 interface TradeCalendarProps {
   trades: DailyTrades;
@@ -22,8 +22,28 @@ interface TradeCalendarProps {
 export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isWeeklyReflectionOpen, setIsWeeklyReflectionOpen] = useState(false);
+  const [weeklyReflection, setWeeklyReflection] = useState("");
 
   const handleDayClick = (date: Date) => {
+    if (isSunday(date)) {
+      const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
+      let weeklyPnL = 0;
+
+      // Calculate weekly PnL
+      for (let d = weekStart; d <= weekEnd; d.setDate(d.getDate() + 1)) {
+        const dateStr = format(d, "yyyy-MM-dd");
+        const dayTrades = trades[dateStr] || [];
+        weeklyPnL += dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
+      }
+
+      // Show weekly reflection dialog
+      setSelectedDate(date);
+      setIsWeeklyReflectionOpen(true);
+      return;
+    }
+
     setSelectedDate(date);
     setIsDialogOpen(true);
   };
@@ -73,15 +93,16 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
         mode="single"
         selected={selectedDate}
         onSelect={handleDayClick}
+        weekStartsOn={1}
         className="rounded-md border w-full max-w-4xl mx-auto bg-white dark:bg-black"
         classNames={{
           months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
           month: "space-y-4 w-full",
-          caption: "flex justify-center pt-1 relative items-center text-lg font-bold h-16", // Increased height to match nav arrows
+          caption: "flex justify-center pt-1 relative items-center text-lg font-bold h-16",
           caption_label: "text-base font-medium",
-          nav: "space-x-1 flex items-center h-16", // Explicitly set nav height
+          nav: "space-x-1 flex items-center h-16",
           nav_button: cn(
-            "h-16 w-16 bg-transparent p-0 opacity-75 hover:opacity-100 text-lg" // Increased size to 16 (64px)
+            "h-16 w-16 bg-transparent p-0 opacity-75 hover:opacity-100 text-lg"
           ),
           table: "w-full border-collapse space-y-1",
           head_row: "flex w-full",
@@ -89,7 +110,7 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
           row: "flex w-full mt-2",
           cell: "h-24 w-full text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
           day: cn(
-            "h-24 w-full p-0 font-normal aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground text-lg" // Increased text size and full width
+            "h-24 w-full p-0 font-normal aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground text-lg"
           ),
           day_range_end: "day-range-end",
           day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
@@ -121,6 +142,38 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
             onCancel={() => setIsDialogOpen(false)}
             defaultDate={selectedDate}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isWeeklyReflectionOpen} onOpenChange={setIsWeeklyReflectionOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              Weekly Reflection - Week ending {selectedDate ? format(selectedDate, "PP") : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-lg">
+              Weekly P&L Summary for {selectedDate ? format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "PP") : ""} - {selectedDate ? format(selectedDate, "PP") : ""}
+            </div>
+            <Textarea
+              placeholder="Reflect on your trading week. What went well? What could be improved? Any patterns you noticed?"
+              value={weeklyReflection}
+              onChange={(e) => setWeeklyReflection(e.target.value)}
+              className="min-h-[200px]"
+            />
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsWeeklyReflectionOpen(false)}>
+                Close
+              </Button>
+              <Button onClick={() => {
+                setWeeklyReflection("");
+                setIsWeeklyReflectionOpen(false);
+              }}>
+                Save Reflection
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
