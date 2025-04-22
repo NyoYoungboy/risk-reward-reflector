@@ -5,8 +5,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
-import { format, startOfWeek, endOfWeek, isSunday } from "date-fns";
+import { format, startOfWeek, endOfWeek, isSunday, isLastDayOfMonth, startOfMonth, endOfMonth } from "date-fns";
 import { TradeForm } from "./TradeForm";
 import { DailyTrades, Trade } from "@/types/trade";
 import { Button } from "./ui/button";
@@ -14,6 +15,16 @@ import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "./ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
 
 interface TradeCalendarProps {
   trades: DailyTrades;
@@ -32,13 +43,43 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isWeeklyReflectionOpen, setIsWeeklyReflectionOpen] = useState(false);
   const [isDailyRecapOpen, setIsDailyRecapOpen] = useState(false);
+  const [isMonthlyRecapOpen, setIsMonthlyRecapOpen] = useState(false);
   const [weeklyReflection, setWeeklyReflection] = useState("");
   const [weeklyReflections, setWeeklyReflections] = useState<WeeklyReflection[]>([]);
   const [currentWeekPnL, setCurrentWeekPnL] = useState(0);
   const [currentWeekCurrency, setCurrentWeekCurrency] = useState("USD");
   const { toast } = useToast();
 
+  const calculateMonthlyStats = (date: Date) => {
+    const monthStart = startOfMonth(date);
+    const monthEnd = endOfMonth(date);
+    let monthlyPnL = 0;
+    let monthlyTrades: Trade[] = [];
+    let currency = "USD";
+
+    for (let d = new Date(monthStart); d <= monthEnd; d.setDate(d.getDate() + 1)) {
+      const dateStr = format(d, "yyyy-MM-dd");
+      const dayTrades = trades[dateStr] || [];
+      
+      if (dayTrades.length > 0) {
+        monthlyPnL += dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
+        monthlyTrades = [...monthlyTrades, ...dayTrades];
+        if (!currency || currency === "USD") {
+          currency = dayTrades[0].currency;
+        }
+      }
+    }
+
+    return { monthlyPnL, monthlyTrades, currency };
+  };
+
   const handleDayClick = (date: Date) => {
+    if (isLastDayOfMonth(date)) {
+      setSelectedDate(date);
+      setIsMonthlyRecapOpen(true);
+      return;
+    }
+
     if (isSunday(date)) {
       const weekStart = startOfWeek(date, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
@@ -127,6 +168,21 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
     const dateStr = format(day, "yyyy-MM-dd");
     const dayTrades = trades[dateStr] || [];
     
+    if (isLastDayOfMonth(day)) {
+      const { monthlyPnL, currency } = calculateMonthlyStats(day);
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(day)}>
+          <div className="text-xs font-medium text-purple-500">Month End</div>
+          <div className={cn(
+            "text-xs font-medium",
+            monthlyPnL > 0 ? "text-green-500" : "text-red-500"
+          )}>
+            {monthlyPnL.toFixed(2)} {currency}
+          </div>
+        </div>
+      );
+    }
+
     if (isSunday(day)) {
       const weekReflection = weeklyReflections.find(
         (r) => r.weekEndDate === dateStr
@@ -340,6 +396,95 @@ export function TradeCalendar({ trades, onAddTrade }: TradeCalendarProps) {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isMonthlyRecapOpen} onOpenChange={setIsMonthlyRecapOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Monthly Trading Recap - {selectedDate ? format(selectedDate, "MMMM yyyy") : ""}
+            </DialogTitle>
+            <DialogDescription>
+              Review your trading performance for the entire month
+            </DialogDescription>
+          </DialogHeader>
+          {selectedDate && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Monthly Overview</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {calculateMonthlyStats(selectedDate).monthlyPnL.toFixed(2)} {calculateMonthlyStats(selectedDate).currency}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Total trades: {calculateMonthlyStats(selectedDate).monthlyTrades.length}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">All Trades This Month</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Ticker</TableHead>
+                      <TableHead>Risk (R)</TableHead>
+                      <TableHead>Actual R</TableHead>
+                      <TableHead>P&L</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {calculateMonthlyStats(selectedDate).monthlyTrades.map((trade) => (
+                      <TableRow key={trade.id}>
+                        <TableCell>{format(trade.date, "MMM d")}</TableCell>
+                        <TableCell>{trade.ticker}</TableCell>
+                        <TableCell>{trade.riskR}</TableCell>
+                        <TableCell>{trade.actualR}</TableCell>
+                        <TableCell className={cn(
+                          "font-medium",
+                          trade.pnl > 0 ? "text-green-500" : "text-red-500"
+                        )}>
+                          {trade.pnl.toFixed(2)} {trade.currency}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Weekly Reflections</h3>
+                <div className="space-y-4">
+                  {weeklyReflections
+                    .filter(reflection => {
+                      const reflectionDate = new Date(reflection.weekEndDate);
+                      return reflectionDate >= startOfMonth(selectedDate) && 
+                             reflectionDate <= endOfMonth(selectedDate);
+                    })
+                    .map((reflection) => (
+                      <Card key={reflection.weekEndDate}>
+                        <CardHeader>
+                          <CardTitle>Week Ending {format(new Date(reflection.weekEndDate), "MMM d")}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="whitespace-pre-wrap">{reflection.reflection}</p>
+                          <div className={cn(
+                            "mt-2 font-medium",
+                            reflection.pnl > 0 ? "text-green-500" : "text-red-500"
+                          )}>
+                            Weekly P&L: {reflection.pnl.toFixed(2)} {reflection.currency}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
