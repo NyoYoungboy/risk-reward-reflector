@@ -1,14 +1,42 @@
+
 import React, { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, isSunday, isLastDayOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import type { EconomicEvents } from "@/types/economic";
-import { ChartLine } from "lucide-react";
+import type { DailyTrades, Trade } from "@/types/trade";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Trash2, Plus, ChartLine } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TradeForm } from "@/components/TradeForm";
 
 interface TradeCalendarProps {
   trades: DailyTrades;
   onAddTrade: (trade: Trade) => void;
   onDeleteTrade: (tradeId: string, date: Date) => void;
   economicEvents: EconomicEvents;
+}
+
+interface WeeklyReflection {
+  weekEndDate: string;
+  reflection: string;
+  pnl: number;
+  currency: string;
 }
 
 export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvents }: TradeCalendarProps) {

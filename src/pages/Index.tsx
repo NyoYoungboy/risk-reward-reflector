@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { TradeCalendar } from "@/components/TradeCalendar";
 import type { DailyTrades, Trade } from "@/types/trade";
