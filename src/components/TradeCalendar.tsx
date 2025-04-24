@@ -406,39 +406,83 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>
-              Daily Trading Recap - {selectedDate ? format(selectedDate, "PP") : ""}
+              {isSunday(selectedDate as Date) ? (
+                <>Week Ahead - Economic Events</>
+              ) : (
+                <>Daily Trading Recap - {selectedDate ? format(selectedDate, "PP") : ""}</>
+              )}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {selectedDate && (
               <>
-                {economicEvents[format(selectedDate, "yyyy-MM-dd")]?.map((event) => (
-                  <Card key={event.id} className="bg-blue-50 dark:bg-blue-900/20">
-                    <CardHeader>
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <ChartLine className="h-4 w-4" />
-                        {event.indicator}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <div className="text-sm font-medium">Actual</div>
-                          <div>{event.actual}%</div>
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium">Previous</div>
-                          <div>{event.previous}%</div>
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium">Forecast</div>
-                          <div>{event.forecast}%</div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                {selectedDate && (
+                {isSunday(selectedDate) ? (
+                  <div className="space-y-4">
+                    {(() => {
+                      const nextWeekStart = selectedDate;
+                      const nextWeekEnd = addDays(selectedDate, 6);
+                      let hasEvents = false;
+
+                      return (
+                        <>
+                          <div className="text-muted-foreground">
+                            Economic events for {format(nextWeekStart, "MMM d")} - {format(nextWeekEnd, "MMM d, yyyy")}
+                          </div>
+                          {Array.from({ length: 7 }, (_, i) => {
+                            const currentDate = addDays(nextWeekStart, i);
+                            const dateStr = format(currentDate, "yyyy-MM-dd");
+                            const events = economicEvents[dateStr] || [];
+
+                            if (events.length > 0) {
+                              hasEvents = true;
+                              return (
+                                <Card key={dateStr}>
+                                  <CardHeader>
+                                    <CardTitle className="text-base">
+                                      {format(currentDate, "EEEE, MMMM d")}
+                                    </CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="space-y-4">
+                                    {events.map((event) => (
+                                      <div
+                                        key={event.id}
+                                        className="border rounded-lg p-4 bg-blue-50/50 dark:bg-blue-900/20"
+                                      >
+                                        <div className="font-medium">{event.indicator}</div>
+                                        <div className="grid grid-cols-3 gap-4 mt-2 text-sm">
+                                          <div>
+                                            <div className="text-muted-foreground">Previous</div>
+                                            <div>{event.previous}%</div>
+                                          </div>
+                                          <div>
+                                            <div className="text-muted-foreground">Forecast</div>
+                                            <div>{event.forecast}%</div>
+                                          </div>
+                                          {event.actual !== undefined && (
+                                            <div>
+                                              <div className="text-muted-foreground">Actual</div>
+                                              <div>{event.actual}%</div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </CardContent>
+                                </Card>
+                              );
+                            }
+                            return null;
+                          })}
+                          {!hasEvents && (
+                            <div className="text-center text-muted-foreground py-8">
+                              No economic events scheduled for this week
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                ) : (
                   <>
                     <div className="text-lg font-medium">
                       Trades for {format(selectedDate, "PP")}
@@ -511,12 +555,14 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
               <Button variant="outline" onClick={() => setIsDailyRecapOpen(false)}>
                 Close
               </Button>
-              <Button onClick={() => {
-                setIsDailyRecapOpen(false);
-                setIsDialogOpen(true);
-              }}>
-                Add Trade
-              </Button>
+              {!isSunday(selectedDate as Date) && (
+                <Button onClick={() => {
+                  setIsDailyRecapOpen(false);
+                  setIsDialogOpen(true);
+                }}>
+                  Add Trade
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>
