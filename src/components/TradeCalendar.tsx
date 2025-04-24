@@ -1,7 +1,6 @@
-
 import React, { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
-import { format, startOfMonth, endOfMonth, isSunday, isLastDayOfMonth, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, isSaturday, isSunday, isLastDayOfMonth, startOfWeek, endOfWeek, addDays, addWeeks } from "date-fns";
 import type { EconomicEvents } from "@/types/economic";
 import type { DailyTrades, Trade } from "@/types/trade";
 import { useToast } from "@/hooks/use-toast";
@@ -81,9 +80,9 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
       return;
     }
 
-    if (isSunday(date)) {
+    if (isSaturday(date)) {
       const weekStart = startOfWeek(date, { weekStartsOn: 1 });
-      const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
+      const weekEnd = date;
       let weeklyPnL = 0;
       let currency = "USD";
 
@@ -110,6 +109,23 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
       
       setSelectedDate(date);
       setIsWeeklyReflectionOpen(true);
+      return;
+    }
+
+    if (isSunday(date)) {
+      const nextWeekStart = date;
+      const nextWeekEnd = addDays(date, 6);
+      let upcomingEvents = [];
+
+      for (let d = new Date(nextWeekStart); d <= nextWeekEnd; d.setDate(d.getDate() + 1)) {
+        const dateStr = format(d, "yyyy-MM-dd");
+        if (economicEvents[dateStr]) {
+          upcomingEvents = [...upcomingEvents, ...economicEvents[dateStr]];
+        }
+      }
+
+      setSelectedDate(date);
+      setIsDailyRecapOpen(true);
       return;
     }
 
@@ -199,7 +215,7 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
       );
     }
 
-    if (isSunday(day)) {
+    if (isSaturday(day)) {
       const weekReflection = weeklyReflections.find(
         (r) => r.weekEndDate === dateStr
       );
@@ -210,7 +226,7 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
         return hasReflection ? (
           <div className="w-full h-full flex flex-col items-center justify-center">
             <div className="text-xs font-medium text-violet-500">
-              Week Reflection Saved
+              Week Summary Saved
             </div>
             {weekReflection && (
               <div className="text-xs font-medium">
@@ -226,6 +242,32 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
           </div>
         );
       }
+    }
+
+    if (isSunday(day)) {
+      const nextWeekStart = day;
+      const nextWeekEnd = addDays(day, 6);
+      let upcomingEventsCount = 0;
+
+      for (let d = new Date(nextWeekStart); d <= nextWeekEnd; d.setDate(d.getDate() + 1)) {
+        const nextDateStr = format(d, "yyyy-MM-dd");
+        if (economicEvents[nextDateStr]) {
+          upcomingEventsCount += economicEvents[nextDateStr].length;
+        }
+      }
+
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center">
+          <div className="text-xs font-medium text-blue-500">
+            Week Ahead
+          </div>
+          {upcomingEventsCount > 0 && (
+            <div className="text-xs text-muted-foreground">
+              {upcomingEventsCount} economic event{upcomingEventsCount > 1 ? 's' : ''}
+            </div>
+          )}
+        </div>
+      );
     }
     
     if (dayTrades.length === 0 && dayEvents.length === 0) return null;
