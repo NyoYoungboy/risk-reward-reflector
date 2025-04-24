@@ -1,7 +1,7 @@
-
 import React, { useState } from "react";
 import { TradeCalendar } from "@/components/TradeCalendar";
 import type { DailyTrades, Trade } from "@/types/trade";
+import type { EconomicEvent, EconomicEvents } from "@/types/economic";
 import { format } from "date-fns";
 
 interface WeeklyReflection {
@@ -11,9 +11,32 @@ interface WeeklyReflection {
   currency: string;
 }
 
+// Example economic events - in a real app, this would come from an API
+const initialEconomicEvents: EconomicEvents = {
+  "2025-04-10": [{
+    id: "cpi-apr-2025",
+    date: new Date("2025-04-10"),
+    indicator: "US CPI (YoY)",
+    actual: 3.2,
+    previous: 3.1,
+    forecast: 3.3,
+    currency: "USD"
+  }],
+  "2025-04-26": [{
+    id: "gdp-apr-2025",
+    date: new Date("2025-04-26"),
+    indicator: "US GDP Growth Rate (QoQ)",
+    actual: 2.1,
+    previous: 1.9,
+    forecast: 2.0,
+    currency: "USD"
+  }]
+};
+
 export default function Index() {
   const [trades, setTrades] = useState<DailyTrades>({});
   const [weeklyReflections, setWeeklyReflections] = useState<WeeklyReflection[]>([]);
+  const [economicEvents] = useState<EconomicEvents>(initialEconomicEvents);
 
   const handleAddTrade = (trade: Trade) => {
     const dateStr = format(trade.date, "yyyy-MM-dd");
@@ -49,7 +72,8 @@ export default function Index() {
     <TradeCalendar 
       trades={trades} 
       onAddTrade={handleAddTrade}
-      onDeleteTrade={handleDeleteTrade} 
+      onDeleteTrade={handleDeleteTrade}
+      economicEvents={economicEvents}
     />
   );
 }

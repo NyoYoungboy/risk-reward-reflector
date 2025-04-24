@@ -1,56 +1,17 @@
 import React, { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { format, startOfWeek, endOfWeek, isSunday, isLastDayOfMonth, startOfMonth, endOfMonth } from "date-fns";
-import { TradeForm } from "./TradeForm";
-import { DailyTrades, Trade } from "@/types/trade";
-import { Button } from "./ui/button";
-import { Plus, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Textarea } from "./ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "./ui/table";
+import { format } from "date-fns";
+import type { EconomicEvents } from "@/types/economic";
+import { ChartLine } from "lucide-react";
 
 interface TradeCalendarProps {
   trades: DailyTrades;
   onAddTrade: (trade: Trade) => void;
   onDeleteTrade: (tradeId: string, date: Date) => void;
+  economicEvents: EconomicEvents;
 }
 
-interface WeeklyReflection {
-  weekEndDate: string;
-  reflection: string;
-  pnl: number;
-  currency: string;
-}
-
-export function TradeCalendar({ trades, onAddTrade, onDeleteTrade }: TradeCalendarProps) {
+export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvents }: TradeCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isWeeklyReflectionOpen, setIsWeeklyReflectionOpen] = useState(false);
@@ -126,6 +87,7 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade }: TradeCalend
 
     const dateStr = format(date, "yyyy-MM-dd");
     const dayTrades = trades[dateStr] || [];
+    const dayEvents = economicEvents[dateStr] || [];
     const dailyPnL = dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
     const currency = dayTrades.length > 0 ? dayTrades[0].currency : "USD";
 
@@ -187,6 +149,7 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade }: TradeCalend
   const getDayContent = (day: Date) => {
     const dateStr = format(day, "yyyy-MM-dd");
     const dayTrades = trades[dateStr] || [];
+    const dayEvents = economicEvents[dateStr] || [];
     
     if (isLastDayOfMonth(day)) {
       const { monthlyPnL, currency } = calculateMonthlyStats(day);
@@ -199,6 +162,11 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade }: TradeCalend
           )}>
             {monthlyPnL.toFixed(2)} {currency}
           </div>
+          {dayEvents.length > 0 && (
+            <div className="mt-1">
+              <ChartLine className="h-4 w-4 text-blue-500" />
+            </div>
+          )}
         </div>
       );
     }
@@ -232,22 +200,31 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade }: TradeCalend
       }
     }
     
-    if (dayTrades.length === 0) return null;
+    if (dayTrades.length === 0 && dayEvents.length === 0) return null;
 
     const totalPnL = dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
     const isProfit = totalPnL > 0;
 
     return (
       <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(day)}>
-        <div className={cn(
-          "text-xs font-medium",
-          isProfit ? "text-green-500" : "text-red-500"
-        )}>
-          {totalPnL.toFixed(2)} {dayTrades[0].currency}
-        </div>
-        <div className="text-xs text-muted-foreground">
-          {dayTrades.length} trade{dayTrades.length > 1 ? "s" : ""}
-        </div>
+        {dayTrades.length > 0 && (
+          <>
+            <div className={cn(
+              "text-xs font-medium",
+              isProfit ? "text-green-500" : "text-red-500"
+            )}>
+              {totalPnL.toFixed(2)} {dayTrades[0].currency}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {dayTrades.length} trade{dayTrades.length > 1 ? "s" : ""}
+            </div>
+          </>
+        )}
+        {dayEvents.length > 0 && (
+          <div className="mt-1 flex items-center">
+            <ChartLine className="h-4 w-4 text-blue-500" />
+          </div>
+        )}
       </div>
     );
   };
@@ -365,69 +342,99 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade }: TradeCalend
           <div className="space-y-4">
             {selectedDate && (
               <>
-                <div className="text-lg font-medium">
-                  Trades for {format(selectedDate, "PP")}
-                </div>
-                <div className="space-y-2">
-                  {trades[format(selectedDate, "yyyy-MM-dd")]?.map((trade, index) => (
-                    <div key={trade.id} className="p-4 border rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">{trade.ticker}</span>
-                        <div className="flex items-center gap-2">
-                          <span className={cn(
-                            "font-bold",
-                            trade.pnl > 0 ? "text-green-500" : "text-red-500"
-                          )}>
-                            {trade.pnl.toFixed(2)} {trade.currency}
-                          </span>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the trade.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  className="bg-red-500 hover:bg-red-600"
-                                  onClick={() => handleDeleteTrade(trade.id, selectedDate)}
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                {economicEvents[format(selectedDate, "yyyy-MM-dd")]?.map((event) => (
+                  <Card key={event.id} className="bg-blue-50 dark:bg-blue-900/20">
+                    <CardHeader>
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <ChartLine className="h-4 w-4" />
+                        {event.indicator}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <div className="text-sm font-medium">Actual</div>
+                          <div>{event.actual}%</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium">Previous</div>
+                          <div>{event.previous}%</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium">Forecast</div>
+                          <div>{event.forecast}%</div>
                         </div>
                       </div>
-                      <div className="mt-2 text-sm text-muted-foreground">
-                        <div>Risk: {trade.riskR}R</div>
-                        <div>Actual: {trade.actualR}R</div>
-                        <div>Entry: {trade.entryReason}</div>
-                        <div>Exit: {trade.exitReason}</div>
-                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {selectedDate && (
+                  <>
+                    <div className="text-lg font-medium">
+                      Trades for {format(selectedDate, "PP")}
                     </div>
-                  ))}
-                </div>
-                <div className="mt-4 text-lg font-medium flex justify-between items-center">
-                  <span>Daily P&L</span>
-                  <span className={cn(
-                    "font-bold",
-                    (trades[format(selectedDate, "yyyy-MM-dd")] || []).reduce((sum, t) => sum + t.pnl, 0) > 0 
-                      ? "text-green-500" 
-                      : "text-red-500"
-                  )}>
-                    {(trades[format(selectedDate, "yyyy-MM-dd")] || []).reduce((sum, t) => sum + t.pnl, 0).toFixed(2)} {
-                      trades[format(selectedDate, "yyyy-MM-dd")]?.[0]?.currency || "USD"
-                    }
-                  </span>
-                </div>
+                    <div className="space-y-2">
+                      {trades[format(selectedDate, "yyyy-MM-dd")]?.map((trade, index) => (
+                        <div key={trade.id} className="p-4 border rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">{trade.ticker}</span>
+                            <div className="flex items-center gap-2">
+                              <span className={cn(
+                                "font-bold",
+                                trade.pnl > 0 ? "text-green-500" : "text-red-500"
+                              )}>
+                                {trade.pnl.toFixed(2)} {trade.currency}
+                              </span>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will permanently delete the trade.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-red-500 hover:bg-red-600"
+                                      onClick={() => handleDeleteTrade(trade.id, selectedDate)}
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-sm text-muted-foreground">
+                            <div>Risk: {trade.riskR}R</div>
+                            <div>Actual: {trade.actualR}R</div>
+                            <div>Entry: {trade.entryReason}</div>
+                            <div>Exit: {trade.exitReason}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 text-lg font-medium flex justify-between items-center">
+                      <span>Daily P&L</span>
+                      <span className={cn(
+                        "font-bold",
+                        (trades[format(selectedDate, "yyyy-MM-dd")] || []).reduce((sum, t) => sum + t.pnl, 0) > 0 
+                          ? "text-green-500" 
+                          : "text-red-500"
+                      )}>
+                        {(trades[format(selectedDate, "yyyy-MM-dd")] || []).reduce((sum, t) => sum + t.pnl, 0).toFixed(2)} {
+                          trades[format(selectedDate, "yyyy-MM-dd")]?.[0]?.currency || "USD"
+                        }
+                      </span>
+                    </div>
+                  </>
+                )}
               </>
             )}
             <div className="flex justify-end space-x-2">
