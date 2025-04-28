@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
-import { format, startOfMonth, endOfMonth, isSaturday, isSunday, isLastDayOfMonth, startOfWeek, endOfWeek, addDays, addWeeks } from "date-fns";
+import { format, startOfMonth, endOfMonth, isSaturday, isSunday, isLastDayOfMonth, startOfWeek, endOfWeek, addDays } from "date-fns";
 import type { EconomicEvents } from "@/types/economic";
 import type { DailyTrades, Trade } from "@/types/trade";
 import { useToast } from "@/hooks/use-toast";
@@ -74,8 +74,9 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
   };
 
   const handleDayClick = (date: Date) => {
+    setSelectedDate(date);
+    
     if (isLastDayOfMonth(date)) {
-      setSelectedDate(date);
       setIsMonthlyRecapOpen(true);
       return;
     }
@@ -107,26 +108,11 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
       setCurrentWeekPnL(weeklyPnL);
       setCurrentWeekCurrency(currency);
       
-      setSelectedDate(date);
       setIsWeeklyReflectionOpen(true);
-      return;
-    }
-
-    if (isSunday(date)) {
-      const nextWeekStart = date;
-      const nextWeekEnd = addDays(date, 6);
-      let upcomingEvents = [];
-
-      for (let d = new Date(nextWeekStart); d <= nextWeekEnd; d.setDate(d.getDate() + 1)) {
-        const dateStr = format(d, "yyyy-MM-dd");
-        if (economicEvents[dateStr]) {
-          upcomingEvents = [...upcomingEvents, ...economicEvents[dateStr]];
-        }
-      }
-
-      setSelectedDate(date);
+    } else if (isSunday(date)) {
       setIsDailyRecapOpen(true);
-      return;
+    } else {
+      setIsDailyRecapOpen(true);
     }
 
     const dateStr = format(date, "yyyy-MM-dd");
@@ -134,9 +120,6 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
     const dayEvents = economicEvents[dateStr] || [];
     const dailyPnL = dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
     const currency = dayTrades.length > 0 ? dayTrades[0].currency : "USD";
-
-    setSelectedDate(date);
-    setIsDailyRecapOpen(true);
   };
 
   const handleAddTrade = (trade: Trade) => {
@@ -555,14 +538,12 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
               <Button variant="outline" onClick={() => setIsDailyRecapOpen(false)}>
                 Close
               </Button>
-              {!isSunday(selectedDate as Date) && (
-                <Button onClick={() => {
-                  setIsDailyRecapOpen(false);
-                  setIsDialogOpen(true);
-                }}>
-                  Add Trade
-                </Button>
-              )}
+              <Button onClick={() => {
+                setIsDailyRecapOpen(false);
+                setIsDialogOpen(true);
+              }}>
+                Add Trade
+              </Button>
             </div>
           </div>
         </DialogContent>
