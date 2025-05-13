@@ -4,6 +4,7 @@ import { TradeCalendar } from "@/components/TradeCalendar";
 import type { DailyTrades, Trade } from "@/types/trade";
 import type { EconomicEvent, EconomicEvents } from "@/types/economic";
 import { format } from "date-fns";
+import { toast } from "@/hooks/use-toast";
 
 interface WeeklyReflection {
   weekEndDate: string;
@@ -45,6 +46,12 @@ export default function Index() {
       ...prev,
       [dateStr]: [...(prev[dateStr] || []), trade],
     }));
+    
+    // Show success message
+    toast({
+      title: "Trade Added",
+      description: `${trade.ticker} trade was successfully added${trade.screenshot ? " with screenshot" : ""}`,
+    });
   };
 
   const handleDeleteTrade = (tradeId: string, date: Date) => {
@@ -53,6 +60,11 @@ export default function Index() {
       ...prev,
       [dateStr]: prev[dateStr].filter((trade) => trade.id !== tradeId),
     }));
+    
+    toast({
+      title: "Trade Deleted",
+      description: "The trade was successfully removed",
+    });
   };
 
   const handleSaveReflection = (reflection: WeeklyReflection) => {
@@ -67,6 +79,11 @@ export default function Index() {
     } else {
       setWeeklyReflections([...weeklyReflections, reflection]);
     }
+    
+    toast({
+      title: "Reflection Saved",
+      description: "Your weekly reflection was saved successfully",
+    });
   };
 
   return (

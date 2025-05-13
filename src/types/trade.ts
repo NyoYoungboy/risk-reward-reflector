@@ -12,6 +12,7 @@ export interface Trade {
   pnl: number;
   entryReason: string;
   exitReason: string;
+  screenshot?: string; // Optional URL to the screenshot image
   reflection: {
     whatWentWrong: string;
     whatWentRight: string;

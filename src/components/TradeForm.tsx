@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -20,9 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Camera } from "lucide-react";
 import type { Trade } from "@/types/trade";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { Card, CardContent } from "@/components/ui/card";
 
 const tradeFormSchema = z.object({
   ticker: z.string().min(1, "Ticker is required"),
@@ -40,6 +42,7 @@ const tradeFormSchema = z.object({
   emotionsBefore: z.string(),
   emotionsDuring: z.string(),
   emotionsAfter: z.string(),
+  screenshot: z.any().optional(),
 });
 
 interface TradeFormProps {
@@ -49,6 +52,8 @@ interface TradeFormProps {
 }
 
 export function TradeForm({ onSubmit, onCancel, defaultDate = new Date() }: TradeFormProps) {
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  
   const form = useForm<z.infer<typeof tradeFormSchema>>({
     resolver: zodResolver(tradeFormSchema),
     defaultValues: {
@@ -70,6 +75,19 @@ export function TradeForm({ onSubmit, onCancel, defaultDate = new Date() }: Trad
     },
   });
 
+  const handleScreenshotUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setScreenshotPreview(result);
+        form.setValue("screenshot", result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = (values: z.infer<typeof tradeFormSchema>) => {
     const pnl = values.rValue * values.actualR;
     const trade: Trade = {
@@ -85,6 +103,7 @@ export function TradeForm({ onSubmit, onCancel, defaultDate = new Date() }: Trad
       pnl,
       entryReason: values.entryReason,
       exitReason: values.exitReason,
+      screenshot: screenshotPreview || undefined,
       reflection: {
         whatWentWrong: values.whatWentWrong,
         whatWentRight: values.whatWentRight,
@@ -185,6 +204,43 @@ export function TradeForm({ onSubmit, onCancel, defaultDate = new Date() }: Trad
                 <FormControl>
                   <Input type="number" step="0.1" placeholder="2.5" {...field} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="screenshot"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Trade Screenshot</FormLabel>
+                <div className="flex flex-col space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer p-2 border rounded-md hover:bg-accent">
+                    <Camera size={20} />
+                    <span>Upload Screenshot</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        handleScreenshotUpload(e);
+                        field.onChange(e);
+                      }}
+                    />
+                  </label>
+                  {screenshotPreview && (
+                    <Card className="mt-2 overflow-hidden">
+                      <CardContent className="p-2">
+                        <img
+                          src={screenshotPreview}
+                          alt="Trade Screenshot"
+                          className="w-full h-auto max-h-64 object-contain"
+                        />
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
                 <FormMessage />
               </FormItem>
             )}
