@@ -9,7 +9,150 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      economic_events: {
+        Row: {
+          actual: number | null
+          created_at: string | null
+          currency: string
+          date: string
+          forecast: number | null
+          id: string
+          indicator: string
+          previous: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          actual?: number | null
+          created_at?: string | null
+          currency: string
+          date: string
+          forecast?: number | null
+          id?: string
+          indicator: string
+          previous?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          actual?: number | null
+          created_at?: string | null
+          currency?: string
+          date?: string
+          forecast?: number | null
+          id?: string
+          indicator?: string
+          previous?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      trades: {
+        Row: {
+          actual_r: number
+          created_at: string | null
+          currency: string
+          date: string
+          emotion_after: string | null
+          emotion_before: string | null
+          emotion_during: string | null
+          entry_reason: string | null
+          exit_reason: string | null
+          followed_plan: boolean | null
+          id: string
+          outcome: string
+          pnl: number
+          potential_r: number
+          r_value: number
+          risk_r: number
+          screenshot: string | null
+          ticker: string
+          updated_at: string | null
+          user_id: string
+          what_went_right: string | null
+          what_went_wrong: string | null
+        }
+        Insert: {
+          actual_r: number
+          created_at?: string | null
+          currency: string
+          date: string
+          emotion_after?: string | null
+          emotion_before?: string | null
+          emotion_during?: string | null
+          entry_reason?: string | null
+          exit_reason?: string | null
+          followed_plan?: boolean | null
+          id?: string
+          outcome: string
+          pnl: number
+          potential_r: number
+          r_value: number
+          risk_r: number
+          screenshot?: string | null
+          ticker: string
+          updated_at?: string | null
+          user_id: string
+          what_went_right?: string | null
+          what_went_wrong?: string | null
+        }
+        Update: {
+          actual_r?: number
+          created_at?: string | null
+          currency?: string
+          date?: string
+          emotion_after?: string | null
+          emotion_before?: string | null
+          emotion_during?: string | null
+          entry_reason?: string | null
+          exit_reason?: string | null
+          followed_plan?: boolean | null
+          id?: string
+          outcome?: string
+          pnl?: number
+          potential_r?: number
+          r_value?: number
+          risk_r?: number
+          screenshot?: string | null
+          ticker?: string
+          updated_at?: string | null
+          user_id?: string
+          what_went_right?: string | null
+          what_went_wrong?: string | null
+        }
+        Relationships: []
+      }
+      weekly_reflections: {
+        Row: {
+          created_at: string | null
+          currency: string
+          id: string
+          pnl: number
+          reflection: string
+          updated_at: string | null
+          user_id: string
+          week_end_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          currency: string
+          id?: string
+          pnl: number
+          reflection: string
+          updated_at?: string | null
+          user_id: string
+          week_end_date: string
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string
+          id?: string
+          pnl?: number
+          reflection?: string
+          updated_at?: string | null
+          user_id?: string
+          week_end_date?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
