@@ -38,6 +38,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           title: "Signed out successfully",
           description: "You have been signed out"
         });
+      } else if (event === 'PASSWORD_RECOVERY') {
+        toast({
+          title: "Password recovery initiated",
+          description: "Please follow the steps to reset your password."
+        });
+      } else if (event === 'USER_UPDATED') {
+        toast({
+          title: "User profile updated",
+          description: "Your profile information has been updated."
+        });
+      } else if (event === 'TOKEN_REFRESHED') {
+        // Silent refresh, no need to notify user
+        console.log("Auth token refreshed");
       }
     });
     
@@ -57,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       navigate("/");
     } catch (error: any) {
+      console.error("Sign in error:", error);
       toast({
         title: "Sign in failed",
         description: error.message,
@@ -68,13 +82,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: window.location.origin + '/auth'
+        }
+      });
+      
       if (error) throw error;
+      
       toast({
         title: "Sign up successful",
         description: "Please check your email to verify your account",
       });
     } catch (error: any) {
+      console.error("Sign up error:", error);
       toast({
         title: "Sign up failed",
         description: error.message,
@@ -89,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await supabase.auth.signOut();
       navigate("/auth");
     } catch (error: any) {
+      console.error("Sign out error:", error);
       toast({
         title: "Sign out failed",
         description: error.message,

@@ -1,19 +1,38 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Info } from "lucide-react";
 
 export default function Auth() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signIn, signUp, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
+  // Check for error or success messages in URL
+  useEffect(() => {
+    const error = searchParams.get("error");
+    const message = searchParams.get("message");
+    
+    if (error) {
+      setErrorMessage(decodeURIComponent(error));
+    }
+    
+    if (message) {
+      setSuccessMessage(decodeURIComponent(message));
+    }
+  }, [searchParams]);
+
   // If user is already logged in, redirect to home
   React.useEffect(() => {
     if (user) {
@@ -24,8 +43,13 @@ export default function Auth() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage(null);
+    
     try {
       await signIn(email, password);
+      setSuccessMessage("Signed in successfully!");
+    } catch (error: any) {
+      setErrorMessage(error.message || "Failed to sign in. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -34,9 +58,13 @@ export default function Auth() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage(null);
+    
     try {
       await signUp(email, password);
-      // Don't redirect after signup as they might need to verify email
+      setSuccessMessage("Account created! Please check your email to confirm your registration.");
+    } catch (error: any) {
+      setErrorMessage(error.message || "Failed to create account. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -52,6 +80,28 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {errorMessage && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          )}
+          
+          {successMessage && (
+            <Alert className="mb-4 bg-green-50 text-green-800 border-green-200">
+              <Info className="h-4 w-4" />
+              <AlertDescription>{successMessage}</AlertDescription>
+            </Alert>
+          )}
+          
+          <Alert className="mb-4 bg-blue-50 text-blue-800 border-blue-200">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              If you receive an email link that doesn't work, make sure you're using the correct URL. 
+              Contact support if you continue experiencing issues.
+            </AlertDescription>
+          </Alert>
+
           <Tabs defaultValue="signin">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
@@ -109,7 +159,7 @@ export default function Auth() {
             </TabsContent>
           </Tabs>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col space-y-2">
           <p className="text-sm text-muted-foreground text-center w-full">
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </p>
