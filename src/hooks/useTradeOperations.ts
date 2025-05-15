@@ -300,10 +300,13 @@ export function useTradeOperations(
       const existingEntry = dailyJournals.find(journal => journal.date === dateStr);
       
       if (existingEntry) {
-        // Update existing journal
+        // Update existing journal using type assertions to bypass TypeScript errors
+        // until the Supabase types are updated after table creation
         const { error } = await supabase
-          .from('daily_journals')
-          .update({ content })
+          .from('daily_journals' as any)
+          .update({ 
+            content 
+          })
           .eq('id', existingEntry.id);
           
         if (error) throw error;
@@ -317,9 +320,9 @@ export function useTradeOperations(
           )
         );
       } else {
-        // Insert new journal
+        // Insert new journal using type assertions to bypass TypeScript errors
         const { data, error } = await supabase
-          .from('daily_journals')
+          .from('daily_journals' as any)
           .insert({
             user_id: userId,
             date: dateStr,
