@@ -2,20 +2,26 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Trade } from "@/types/trade";
 
+// Custom type for offline trades
+interface OfflineTrade extends Trade {
+  offline: boolean;
+  syncPending: boolean;
+}
+
 // Open IndexedDB
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('TradingJournalOfflineDB', 1);
     
-    request.onerror = (event) => {
+    request.onerror = () => {
       reject('Error opening IndexedDB');
     };
     
-    request.onsuccess = (event) => {
+    request.onsuccess = () => {
       resolve(request.result);
     };
     
-    request.onupgradeneeded = (event) => {
+    request.onupgradeneeded = () => {
       const db = request.result;
       
       // Create object stores
@@ -35,10 +41,10 @@ export async function storeTradeOffline(trade: Trade): Promise<void> {
     const store = transaction.objectStore('offlineTrades');
     
     // Add offline flag to trade
-    const offlineTrade = {
+    const offlineTrade: OfflineTrade = {
       ...trade,
       offline: true,
-      pendingSync: true
+      syncPending: true
     };
     
     await store.add(offlineTrade);
@@ -46,7 +52,15 @@ export async function storeTradeOffline(trade: Trade): Promise<void> {
     // Register for background sync if available
     if ('serviceWorker' in navigator && 'SyncManager' in window) {
       const registration = await navigator.serviceWorker.ready;
-      await registration.sync.register('sync-trades');
+      // Only use sync if it's available in the browser
+      if ('sync' in registration) {
+        try {
+          // @ts-ignore - TypeScript doesn't recognize the sync API yet
+          await registration.sync.register('sync-trades');
+        } catch (e) {
+          console.error('Background sync registration failed:', e);
+        }
+      }
     }
     
   } catch (error) {
@@ -56,7 +70,7 @@ export async function storeTradeOffline(trade: Trade): Promise<void> {
 }
 
 // Get offline trades
-export async function getOfflineTrades(): Promise<Trade[]> {
+export async function getOfflineTrades(): Promise<OfflineTrade[]> {
   try {
     const db = await openDB();
     const transaction = db.transaction(['offlineTrades'], 'readonly');
@@ -66,7 +80,7 @@ export async function getOfflineTrades(): Promise<Trade[]> {
       const request = store.getAll();
       
       request.onsuccess = () => {
-        resolve(request.result);
+        resolve(request.result as OfflineTrade[]);
       };
       
       request.onerror = () => {
@@ -85,20 +99,26 @@ export async function syncOfflineTrades(): Promise<void> {
   
   try {
     const offlineTrades = await getOfflineTrades();
-    const pendingTrades = offlineTrades.filter(trade => trade.pendingSync);
+    const pendingTrades = offlineTrades.filter(trade => trade.syncPending);
     
     if (pendingTrades.length === 0) return;
+    
+    // Get current user
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    
+    if (!userId) return;
     
     // Process each offline trade
     for (const trade of pendingTrades) {
       // Remove offline-specific properties
-      const { offline, pendingSync, ...tradeToPush } = trade as any;
+      const { offline, syncPending, ...tradeToPush } = trade;
       
       // Push to Supabase
       const { error } = await supabase
         .from('trades')
         .insert({
-          user_id: supabase.auth.getUser().then(({ data }) => data.user?.id),
+          user_id: userId,
           date: trade.date.toISOString(),
           ticker: trade.ticker,
           risk_r: trade.riskR,
