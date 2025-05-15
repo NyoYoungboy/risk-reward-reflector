@@ -68,6 +68,7 @@ export function useTradeActions(
           user_id: userId,
           date: trade.date.toISOString(),
           ticker: trade.ticker,
+          direction: trade.direction, // Add direction field
           risk_r: trade.riskR,
           potential_r: trade.potentialR,
           r_value: trade.rValue,
@@ -142,6 +143,7 @@ export function useTradeActions(
         .from('trades')
         .update({
           ticker: trade.ticker,
+          direction: trade.direction, // Add direction field
           risk_r: trade.riskR,
           potential_r: trade.potentialR,
           r_value: trade.rValue,

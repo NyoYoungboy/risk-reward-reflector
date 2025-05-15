@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +27,9 @@ import { Card, CardContent } from "@/components/ui/card";
 
 const tradeFormSchema = z.object({
   ticker: z.string().min(1, "Ticker is required"),
+  direction: z.enum(["long", "short"], {
+    required_error: "Please select a trade direction",
+  }),
   riskR: z.coerce.number(),
   potentialR: z.coerce.number(),
   rValue: z.coerce.number(),
@@ -58,6 +60,7 @@ export function TradeEditForm({ onSubmit, onCancel, trade }: TradeEditFormProps)
     resolver: zodResolver(tradeFormSchema),
     defaultValues: {
       ticker: trade.ticker,
+      direction: trade.direction || "long", // Default to "long" for backward compatibility
       riskR: trade.riskR,
       potentialR: trade.potentialR,
       rValue: trade.rValue,
@@ -93,6 +96,7 @@ export function TradeEditForm({ onSubmit, onCancel, trade }: TradeEditFormProps)
     const updatedTrade: Trade = {
       ...trade,
       ticker: values.ticker,
+      direction: values.direction,
       riskR: values.riskR,
       potentialR: values.potentialR,
       rValue: values.rValue,
@@ -130,6 +134,28 @@ export function TradeEditForm({ onSubmit, onCancel, trade }: TradeEditFormProps)
                 <FormControl>
                   <Input placeholder="BTC/USDT" {...field} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="direction"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Direction</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select direction" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="long">Long</SelectItem>
+                    <SelectItem value="short">Short</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}

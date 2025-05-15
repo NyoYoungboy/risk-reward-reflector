@@ -3,6 +3,7 @@ export interface Trade {
   id: string;
   date: Date;
   ticker: string;
+  direction: "long" | "short";
   riskR: number;
   potentialR: number;
   rValue: number;
@@ -41,4 +42,18 @@ export interface TradeStatistics {
   winRate: number;
   totalPnl: number;
   currency: string;
+  longStats: {
+    count: number;
+    winCount: number;
+    lossCount: number;
+    winRate: number;
+    totalPnl: number;
+  };
+  shortStats: {
+    count: number;
+    winCount: number;
+    lossCount: number;
+    winRate: number;
+    totalPnl: number;
+  };
 }
