@@ -53,10 +53,11 @@ export async function storeTradeOffline(trade: Trade): Promise<void> {
     if ('serviceWorker' in navigator && 'SyncManager' in window) {
       const registration = await navigator.serviceWorker.ready;
       // Only use sync if it's available in the browser
-      if ('sync' in registration) {
+      // Use type assertion for the experimental sync API
+      if (registration && 'sync' in registration) {
         try {
-          // @ts-ignore - TypeScript doesn't recognize the sync API yet
-          await registration.sync.register('sync-trades');
+          // TypeScript doesn't fully recognize the background sync API yet
+          await (registration as any).sync.register('sync-trades');
         } catch (e) {
           console.error('Background sync registration failed:', e);
         }
@@ -111,10 +112,35 @@ export async function syncOfflineTrades(): Promise<void> {
     
     // Process each offline trade
     for (const trade of pendingTrades) {
-      // Remove offline-specific properties
+      // Remove offline-specific properties before sending to Supabase
+      // Use destructuring to separate out the properties we don't want to send
       const { offline, syncPending, ...tradeToPush } = trade;
       
-      // Push to Supabase
+      // Handle screenshot upload if it's a data URL
+      let screenshotUrl = trade.screenshot;
+      
+      if (trade.screenshot && trade.screenshot.startsWith('data:image')) {
+        const file = await (await fetch(trade.screenshot)).blob();
+        const fileExt = file.type.split('/')[1];
+        const fileName = `${userId}/${Date.now()}.${fileExt}`;
+        
+        const { data, error: uploadError } = await supabase
+          .storage
+          .from('trade-screenshots')
+          .upload(fileName, file);
+          
+        if (uploadError) throw uploadError;
+        
+        // Get public URL for the uploaded file
+        const { data: { publicUrl } } = supabase
+          .storage
+          .from('trade-screenshots')
+          .getPublicUrl(fileName);
+          
+        screenshotUrl = publicUrl;
+      }
+      
+      // Push to Supabase with properly formatted data
       const { error } = await supabase
         .from('trades')
         .insert({
@@ -130,7 +156,7 @@ export async function syncOfflineTrades(): Promise<void> {
           pnl: trade.pnl,
           entry_reason: trade.entryReason,
           exit_reason: trade.exitReason,
-          screenshot: trade.screenshot,
+          screenshot: screenshotUrl,
           what_went_wrong: trade.reflection.whatWentWrong,
           what_went_right: trade.reflection.whatWentRight,
           followed_plan: trade.reflection.followedPlan,
