@@ -16,15 +16,20 @@ export default function Index() {
     setTrades,
     weeklyReflections,
     setWeeklyReflections,
+    dailyJournals,
+    setDailyJournals,
     economicEvents,
     loading
   } = useTradingData(user?.id);
   
   const {
     handleAddTrade,
+    handleEditTrade,
     handleDeleteTrade,
-    handleSaveReflection
-  } = useTradeOperations(trades, setTrades, weeklyReflections, setWeeklyReflections, user?.id);
+    handleSaveReflection,
+    handleSaveDailyJournal,
+    calculateTradeStatistics
+  } = useTradeOperations(trades, setTrades, weeklyReflections, setWeeklyReflections, dailyJournals, setDailyJournals, user?.id);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -40,9 +45,14 @@ export default function Index() {
       </div>
       <TradeCalendar 
         trades={trades} 
+        dailyJournals={dailyJournals}
         onAddTrade={handleAddTrade}
+        onEditTrade={handleEditTrade}
         onDeleteTrade={handleDeleteTrade}
+        onSaveDailyJournal={handleSaveDailyJournal}
+        onSaveWeeklyReflection={handleSaveReflection}
         economicEvents={economicEvents}
+        calculateTradeStatistics={calculateTradeStatistics}
       />
     </>
   );

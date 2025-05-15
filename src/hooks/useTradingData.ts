@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import type { DailyTrades, Trade } from "@/types/trade";
+import type { DailyTrades, Trade, DailyJournal } from "@/types/trade";
 import type { EconomicEvents } from "@/types/economic";
 
 export interface WeeklyReflection {
@@ -16,6 +16,7 @@ export interface WeeklyReflection {
 export function useTradingData(userId?: string) {
   const [trades, setTrades] = useState<DailyTrades>({});
   const [weeklyReflections, setWeeklyReflections] = useState<WeeklyReflection[]>([]);
+  const [dailyJournals, setDailyJournals] = useState<DailyJournal[]>([]);
   const [economicEvents, setEconomicEvents] = useState<EconomicEvents>({});
   const [loading, setLoading] = useState(true);
 
@@ -91,6 +92,23 @@ export function useTradingData(userId?: string) {
         
         setWeeklyReflections(formattedReflections);
         
+        // Fetch daily journals
+        const { data: journalsData, error: journalsError } = await supabase
+          .from('daily_journals')
+          .select('*')
+          .eq('user_id', userId)
+          .order('date', { ascending: false });
+          
+        if (journalsError) throw journalsError;
+        
+        const formattedJournals: DailyJournal[] = journalsData?.map(journal => ({
+          id: journal.id,
+          date: format(new Date(journal.date), "yyyy-MM-dd"),
+          content: journal.content,
+        })) || [];
+        
+        setDailyJournals(formattedJournals);
+        
         // Fetch economic events
         const { data: eventsData, error: eventsError } = await supabase
           .from('economic_events')
@@ -142,6 +160,8 @@ export function useTradingData(userId?: string) {
     setTrades,
     weeklyReflections,
     setWeeklyReflections,
+    dailyJournals,
+    setDailyJournals,
     economicEvents,
     loading
   };

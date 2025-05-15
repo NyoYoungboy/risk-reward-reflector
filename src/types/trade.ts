@@ -28,3 +28,17 @@ export interface Trade {
 export type DailyTrades = {
   [date: string]: Trade[];
 };
+
+export interface DailyJournal {
+  id: string;
+  date: string;
+  content: string;
+}
+
+export interface TradeStatistics {
+  winCount: number;
+  lossCount: number;
+  winRate: number;
+  totalPnl: number;
+  currency: string;
+}

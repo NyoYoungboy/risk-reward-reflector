@@ -1,14 +1,14 @@
+
 import React, { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { format, startOfMonth, endOfMonth, isSaturday, isSunday, isLastDayOfMonth, startOfWeek, endOfWeek, addDays } from "date-fns";
 import type { EconomicEvents } from "@/types/economic";
-import type { DailyTrades, Trade } from "@/types/trade";
+import type { DailyTrades, Trade, TradeStatistics, DailyJournal } from "@/types/trade";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, ChartLine } from "lucide-react";
+import { Trash2, Plus, ChartLine, Edit } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { 
   AlertDialog,
@@ -23,54 +23,88 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TradeForm } from "@/components/TradeForm";
+import { TradeEditForm } from "@/components/TradeEditForm";
+import { JournalEntry } from "@/components/JournalEntry";
+import { TradeStatisticsSummary } from "@/components/TradeStatistics";
 
 interface TradeCalendarProps {
   trades: DailyTrades;
+  dailyJournals: DailyJournal[];
   onAddTrade: (trade: Trade) => void;
+  onEditTrade: (trade: Trade) => void;
   onDeleteTrade: (tradeId: string, date: Date) => void;
+  onSaveDailyJournal: (dateStr: string, content: string) => void;
+  onSaveWeeklyReflection: (reflection: { weekEndDate: string; reflection: string; pnl: number; currency: string; }) => void;
   economicEvents: EconomicEvents;
+  calculateTradeStatistics: (trades: Trade[]) => TradeStatistics;
 }
 
-interface WeeklyReflection {
-  weekEndDate: string;
-  reflection: string;
-  pnl: number;
-  currency: string;
-}
-
-export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvents }: TradeCalendarProps) {
+export function TradeCalendar({ 
+  trades,
+  dailyJournals, 
+  onAddTrade, 
+  onEditTrade,
+  onDeleteTrade, 
+  onSaveDailyJournal,
+  onSaveWeeklyReflection,
+  economicEvents,
+  calculateTradeStatistics
+}: TradeCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [isWeeklyReflectionOpen, setIsWeeklyReflectionOpen] = useState(false);
   const [isDailyRecapOpen, setIsDailyRecapOpen] = useState(false);
   const [isMonthlyRecapOpen, setIsMonthlyRecapOpen] = useState(false);
   const [weeklyReflection, setWeeklyReflection] = useState("");
-  const [weeklyReflections, setWeeklyReflections] = useState<WeeklyReflection[]>([]);
   const [currentWeekPnL, setCurrentWeekPnL] = useState(0);
   const [currentWeekCurrency, setCurrentWeekCurrency] = useState("USD");
   const { toast } = useToast();
 
+  const getDailyJournalContent = (dateStr: string): string => {
+    const journal = dailyJournals.find(j => j.date === dateStr);
+    return journal ? journal.content : "";
+  };
+
   const calculateMonthlyStats = (date: Date) => {
     const monthStart = startOfMonth(date);
     const monthEnd = endOfMonth(date);
-    let monthlyPnL = 0;
     let monthlyTrades: Trade[] = [];
-    let currency = "USD";
 
     for (let d = new Date(monthStart); d <= monthEnd; d.setDate(d.getDate() + 1)) {
       const dateStr = format(d, "yyyy-MM-dd");
       const dayTrades = trades[dateStr] || [];
       
       if (dayTrades.length > 0) {
-        monthlyPnL += dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
         monthlyTrades = [...monthlyTrades, ...dayTrades];
-        if (!currency || currency === "USD") {
-          currency = dayTrades[0].currency;
-        }
       }
     }
 
-    return { monthlyPnL, monthlyTrades, currency };
+    return { 
+      monthlyTrades, 
+      stats: calculateTradeStatistics(monthlyTrades)
+    };
+  };
+
+  const calculateWeeklyStats = (date: Date) => {
+    const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+    const weekEnd = date;
+    let weeklyTrades: Trade[] = [];
+
+    for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
+      const dateStr = format(d, "yyyy-MM-dd");
+      const dayTrades = trades[dateStr] || [];
+      
+      if (dayTrades.length > 0) {
+        weeklyTrades = [...weeklyTrades, ...dayTrades];
+      }
+    }
+
+    return { 
+      weeklyTrades,
+      stats: calculateTradeStatistics(weeklyTrades)
+    };
   };
 
   const handleDayClick = (date: Date) => {
@@ -82,31 +116,10 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
     }
 
     if (isSaturday(date)) {
-      const weekStart = startOfWeek(date, { weekStartsOn: 1 });
-      const weekEnd = date;
-      let weeklyPnL = 0;
-      let currency = "USD";
-
-      for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
-        const dateStr = format(d, "yyyy-MM-dd");
-        const dayTrades = trades[dateStr] || [];
-        
-        if (dayTrades.length > 0) {
-          weeklyPnL += dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
-          if (!currency || currency === "USD") {
-            currency = dayTrades[0].currency;
-          }
-        }
-      }
-
-      const weekEndStr = format(date, "yyyy-MM-dd");
-      const existingReflection = weeklyReflections.find(
-        (r) => r.weekEndDate === weekEndStr
-      );
-
-      setWeeklyReflection(existingReflection?.reflection || "");
-      setCurrentWeekPnL(weeklyPnL);
-      setCurrentWeekCurrency(currency);
+      const { stats } = calculateWeeklyStats(date);
+      
+      setCurrentWeekPnL(stats.totalPnl);
+      setCurrentWeekCurrency(stats.currency);
       
       setIsWeeklyReflectionOpen(true);
     } else if (isSunday(date)) {
@@ -114,12 +127,6 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
     } else {
       setIsDailyRecapOpen(true);
     }
-
-    const dateStr = format(date, "yyyy-MM-dd");
-    const dayTrades = trades[dateStr] || [];
-    const dayEvents = economicEvents[dateStr] || [];
-    const dailyPnL = dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
-    const currency = dayTrades.length > 0 ? dayTrades[0].currency : "USD";
   };
 
   const handleAddTrade = (trade: Trade) => {
@@ -127,42 +134,35 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
     setIsDialogOpen(false);
   };
 
+  const handleEditTrade = (trade: Trade) => {
+    onEditTrade(trade);
+    setIsEditDialogOpen(false);
+    setSelectedTrade(null);
+  };
+
+  const handleEditClick = (trade: Trade) => {
+    setSelectedTrade(trade);
+    setIsEditDialogOpen(true);
+  };
+
   const handleSaveReflection = () => {
     if (!selectedDate) return;
     
     const weekEndDate = format(selectedDate, "yyyy-MM-dd");
-    
-    const existingIndex = weeklyReflections.findIndex(
-      (r) => r.weekEndDate === weekEndDate
-    );
-    
-    if (existingIndex >= 0) {
-      const updatedReflections = [...weeklyReflections];
-      updatedReflections[existingIndex] = {
-        ...updatedReflections[existingIndex],
-        reflection: weeklyReflection,
-        pnl: currentWeekPnL,
-        currency: currentWeekCurrency
-      };
-      setWeeklyReflections(updatedReflections);
-    } else {
-      setWeeklyReflections([
-        ...weeklyReflections,
-        {
-          weekEndDate,
-          reflection: weeklyReflection,
-          pnl: currentWeekPnL,
-          currency: currentWeekCurrency
-        }
-      ]);
-    }
-    
-    toast({
-      title: "Reflection Saved",
-      description: "Your weekly reflection has been saved."
+    onSaveWeeklyReflection({
+      weekEndDate,
+      reflection: weeklyReflection,
+      pnl: currentWeekPnL,
+      currency: currentWeekCurrency
     });
     
     setIsWeeklyReflectionOpen(false);
+  };
+
+  const handleSaveDailyJournal = (content: string) => {
+    if (!selectedDate) return;
+    const dateStr = format(selectedDate, "yyyy-MM-dd");
+    onSaveDailyJournal(dateStr, content);
   };
 
   const handleDeleteTrade = (tradeId: string, date: Date) => {
@@ -177,17 +177,21 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
     const dateStr = format(day, "yyyy-MM-dd");
     const dayTrades = trades[dateStr] || [];
     const dayEvents = economicEvents[dateStr] || [];
+    const hasJournal = dailyJournals.some(j => j.date === dateStr);
     
     if (isLastDayOfMonth(day)) {
-      const { monthlyPnL, currency } = calculateMonthlyStats(day);
+      const { stats } = calculateMonthlyStats(day);
       return (
         <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(day)}>
           <div className="text-xs font-medium text-purple-500">Month End</div>
           <div className={cn(
             "text-xs font-medium",
-            monthlyPnL > 0 ? "text-green-500" : "text-red-500"
+            stats.totalPnl > 0 ? "text-green-500" : "text-red-500"
           )}>
-            {monthlyPnL.toFixed(2)} {currency}
+            {stats.totalPnl.toFixed(2)} {stats.currency}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Win rate: {(stats.winRate * 100).toFixed(0)}%
           </div>
           {dayEvents.length > 0 && (
             <div className="mt-1">
@@ -199,28 +203,22 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
     }
 
     if (isSaturday(day)) {
-      const weekReflection = weeklyReflections.find(
-        (r) => r.weekEndDate === dateStr
-      );
+      const { stats } = calculateWeeklyStats(day);
       
-      const hasReflection = !!weekReflection;
-      
-      if (dayTrades.length === 0) {
-        return hasReflection ? (
-          <div className="w-full h-full flex flex-col items-center justify-center">
+      if (dayTrades.length === 0 && !hasJournal) {
+        return (
+          <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(day)}>
             <div className="text-xs font-medium text-violet-500">
-              Week Summary Saved
-            </div>
-            {weekReflection && (
-              <div className="text-xs font-medium">
-                {weekReflection.pnl.toFixed(2)} {weekReflection.currency}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center">
-            <div className="text-xs font-medium text-gray-400">
               Weekly Summary
+            </div>
+            <div className={cn(
+              "text-xs font-medium",
+              stats.totalPnl > 0 ? "text-green-500" : "text-red-500"
+            )}>
+              {stats.totalPnl.toFixed(2)} {stats.currency}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Win rate: {(stats.winRate * 100).toFixed(0)}%
             </div>
           </div>
         );
@@ -240,7 +238,7 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
       }
 
       return (
-        <div className="w-full h-full flex flex-col items-center justify-center">
+        <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(day)}>
           <div className="text-xs font-medium text-blue-500">
             Week Ahead
           </div>
@@ -253,33 +251,53 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
       );
     }
     
-    if (dayTrades.length === 0 && dayEvents.length === 0) return null;
+    // Show indicator for days with journal entries
+    const elements = [];
+    
+    if (dayTrades.length > 0) {
+      const totalPnL = dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
+      const isProfit = totalPnL > 0;
 
-    const totalPnL = dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
-    const isProfit = totalPnL > 0;
-
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(day)}>
-        {dayTrades.length > 0 && (
-          <>
-            <div className={cn(
-              "text-xs font-medium",
-              isProfit ? "text-green-500" : "text-red-500"
-            )}>
-              {totalPnL.toFixed(2)} {dayTrades[0].currency}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {dayTrades.length} trade{dayTrades.length > 1 ? "s" : ""}
-            </div>
-          </>
-        )}
-        {dayEvents.length > 0 && (
-          <div className="mt-1 flex items-center">
-            <ChartLine className="h-4 w-4 text-blue-500" />
+      elements.push(
+        <React.Fragment key="trades">
+          <div className={cn(
+            "text-xs font-medium",
+            isProfit ? "text-green-500" : "text-red-500"
+          )}>
+            {totalPnL.toFixed(2)} {dayTrades[0].currency}
           </div>
-        )}
-      </div>
-    );
+          <div className="text-xs text-muted-foreground">
+            {dayTrades.length} trade{dayTrades.length > 1 ? "s" : ""}
+          </div>
+        </React.Fragment>
+      );
+    }
+    
+    if (hasJournal) {
+      elements.push(
+        <div key="journal" className="text-xs font-medium text-amber-500">
+          Journal
+        </div>
+      );
+    }
+    
+    if (dayEvents.length > 0) {
+      elements.push(
+        <div key="events" className="mt-1 flex items-center">
+          <ChartLine className="h-4 w-4 text-blue-500" />
+        </div>
+      );
+    }
+    
+    if (elements.length > 0) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(day)}>
+          {elements}
+        </div>
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -333,6 +351,7 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
         }}
       />
 
+      {/* Add Trade Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -348,51 +367,65 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
         </DialogContent>
       </Dialog>
 
+      {/* Edit Trade Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Edit Trade
+            </DialogTitle>
+          </DialogHeader>
+          {selectedTrade && (
+            <TradeEditForm
+              onSubmit={handleEditTrade}
+              onCancel={() => setIsEditDialogOpen(false)}
+              trade={selectedTrade}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Weekly Reflection Dialog */}
       <Dialog open={isWeeklyReflectionOpen} onOpenChange={setIsWeeklyReflectionOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Weekly Reflection - Week ending {selectedDate ? format(selectedDate, "PP") : ""}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="text-lg font-medium flex justify-between items-center">
-              <span>
-                Weekly P&L Summary for {selectedDate ? format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "PP") : ""} - {selectedDate ? format(selectedDate, "PP") : ""}
-              </span>
-              <span className={cn(
-                "font-bold",
-                currentWeekPnL > 0 ? "text-green-500" : "text-red-500"
-              )}>
-                {currentWeekPnL.toFixed(2)} {currentWeekCurrency}
-              </span>
-            </div>
-            <Textarea
-              placeholder="Reflect on your trading week. What went well? What could be improved? Any patterns you noticed?"
-              value={weeklyReflection}
-              onChange={(e) => setWeeklyReflection(e.target.value)}
-              className="min-h-[200px]"
-            />
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsWeeklyReflectionOpen(false)}>
-                Close
-              </Button>
-              <Button onClick={handleSaveReflection}>
-                Save Reflection
-              </Button>
-            </div>
+            {selectedDate && (
+              <>
+                <TradeStatisticsSummary 
+                  stats={calculateWeeklyStats(selectedDate).stats} 
+                  title="Weekly Performance"
+                />
+                
+                <JournalEntry
+                  date={selectedDate}
+                  content={weeklyReflection}
+                  onSave={(content) => {
+                    setWeeklyReflection(content);
+                    handleSaveReflection();
+                  }}
+                  title="Weekly Reflection"
+                  placeholder="Reflect on your trading week. What went well? What could be improved? Any patterns you noticed?"
+                />
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* Daily Recap Dialog */}
       <Dialog open={isDailyRecapOpen} onOpenChange={setIsDailyRecapOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {isSunday(selectedDate as Date) ? (
                 <>Week Ahead - Economic Events</>
               ) : (
-                <>Daily Trading Recap - {selectedDate ? format(selectedDate, "PP") : ""}</>
+                <>Daily Trading Journal - {selectedDate ? format(selectedDate, "PP") : ""}</>
               )}
             </DialogTitle>
           </DialogHeader>
@@ -467,68 +500,80 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
                   </div>
                 ) : (
                   <>
-                    <div className="text-lg font-medium">
-                      Trades for {format(selectedDate, "PP")}
-                    </div>
-                    <div className="space-y-2">
-                      {trades[format(selectedDate, "yyyy-MM-dd")]?.map((trade, index) => (
-                        <div key={trade.id} className="p-4 border rounded-lg">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">{trade.ticker}</span>
-                            <div className="flex items-center gap-2">
-                              <span className={cn(
-                                "font-bold",
-                                trade.pnl > 0 ? "text-green-500" : "text-red-500"
-                              )}>
-                                {trade.pnl.toFixed(2)} {trade.currency}
-                              </span>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This action cannot be undone. This will permanently delete the trade.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      className="bg-red-500 hover:bg-red-600"
-                                      onClick={() => handleDeleteTrade(trade.id, selectedDate)}
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                    {/* Daily Journal Entry */}
+                    <JournalEntry
+                      date={selectedDate}
+                      content={getDailyJournalContent(format(selectedDate, "yyyy-MM-dd"))}
+                      onSave={(content) => handleSaveDailyJournal(content)}
+                      title="Daily Trading Journal"
+                      placeholder="Record your thoughts about the trading day. Market conditions, personal state of mind, ideas, and potential setups."
+                    />
+                    
+                    {/* Trades List */}
+                    <div className="mt-6">
+                      <div className="text-lg font-medium mb-2">
+                        Trades for {format(selectedDate, "PP")}
+                      </div>
+                      <div className="space-y-2">
+                        {trades[format(selectedDate, "yyyy-MM-dd")]?.map((trade) => (
+                          <div key={trade.id} className="p-4 border rounded-lg">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">{trade.ticker}</span>
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  "font-bold",
+                                  trade.pnl > 0 ? "text-green-500" : "text-red-500"
+                                )}>
+                                  {trade.pnl.toFixed(2)} {trade.currency}
+                                </span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="text-blue-500 hover:text-blue-600"
+                                  onClick={() => handleEditClick(trade)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the trade.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        className="bg-red-500 hover:bg-red-600"
+                                        onClick={() => handleDeleteTrade(trade.id, selectedDate)}
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </div>
+                            <div className="mt-2 text-sm text-muted-foreground">
+                              <div>Risk: {trade.riskR}R</div>
+                              <div>Actual: {trade.actualR}R</div>
+                              <div>Entry: {trade.entryReason}</div>
+                              <div>Exit: {trade.exitReason}</div>
                             </div>
                           </div>
-                          <div className="mt-2 text-sm text-muted-foreground">
-                            <div>Risk: {trade.riskR}R</div>
-                            <div>Actual: {trade.actualR}R</div>
-                            <div>Entry: {trade.entryReason}</div>
-                            <div>Exit: {trade.exitReason}</div>
+                        ))}
+                        {(!trades[format(selectedDate, "yyyy-MM-dd")] || trades[format(selectedDate, "yyyy-MM-dd")].length === 0) && (
+                          <div className="text-center text-muted-foreground py-4">
+                            No trades recorded for this day
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-4 text-lg font-medium flex justify-between items-center">
-                      <span>Daily P&L</span>
-                      <span className={cn(
-                        "font-bold",
-                        (trades[format(selectedDate, "yyyy-MM-dd")] || []).reduce((sum, t) => sum + t.pnl, 0) > 0 
-                          ? "text-green-500" 
-                          : "text-red-500"
-                      )}>
-                        {(trades[format(selectedDate, "yyyy-MM-dd")] || []).reduce((sum, t) => sum + t.pnl, 0).toFixed(2)} {
-                          trades[format(selectedDate, "yyyy-MM-dd")]?.[0]?.currency || "USD"
-                        }
-                      </span>
+                        )}
+                      </div>
                     </div>
                   </>
                 )}
@@ -538,17 +583,20 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
               <Button variant="outline" onClick={() => setIsDailyRecapOpen(false)}>
                 Close
               </Button>
-              <Button onClick={() => {
-                setIsDailyRecapOpen(false);
-                setIsDialogOpen(true);
-              }}>
-                Add Trade
-              </Button>
+              {!isSunday(selectedDate as Date) && (
+                <Button onClick={() => {
+                  setIsDailyRecapOpen(false);
+                  setIsDialogOpen(true);
+                }}>
+                  Add Trade
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* Monthly Recap Dialog */}
       <Dialog open={isMonthlyRecapOpen} onOpenChange={setIsMonthlyRecapOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -561,19 +609,10 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
           </DialogHeader>
           {selectedDate && (
             <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Monthly Overview</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {calculateMonthlyStats(selectedDate).monthlyPnL.toFixed(2)} {calculateMonthlyStats(selectedDate).currency}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Total trades: {calculateMonthlyStats(selectedDate).monthlyTrades.length}
-                  </div>
-                </CardContent>
-              </Card>
+              <TradeStatisticsSummary
+                stats={calculateMonthlyStats(selectedDate).stats}
+                title="Monthly Overview"
+              />
 
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">All Trades This Month</h3>
@@ -583,6 +622,7 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
                       <TableHead>Date</TableHead>
                       <TableHead>Ticker</TableHead>
                       <TableHead>Risk (R)</TableHead>
+                      <TableHead>Outcome</TableHead>
                       <TableHead>Actual R</TableHead>
                       <TableHead>P&L</TableHead>
                     </TableRow>
@@ -593,6 +633,7 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
                         <TableCell>{format(trade.date, "MMM d")}</TableCell>
                         <TableCell>{trade.ticker}</TableCell>
                         <TableCell>{trade.riskR}</TableCell>
+                        <TableCell>{trade.outcome}</TableCell>
                         <TableCell>{trade.actualR}</TableCell>
                         <TableCell className={cn(
                           "font-medium",
@@ -604,34 +645,6 @@ export function TradeCalendar({ trades, onAddTrade, onDeleteTrade, economicEvent
                     ))}
                   </TableBody>
                 </Table>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Weekly Reflections</h3>
-                <div className="space-y-4">
-                  {weeklyReflections
-                    .filter(reflection => {
-                      const reflectionDate = new Date(reflection.weekEndDate);
-                      return reflectionDate >= startOfMonth(selectedDate) && 
-                             reflectionDate <= endOfMonth(selectedDate);
-                    })
-                    .map((reflection) => (
-                      <Card key={reflection.weekEndDate}>
-                        <CardHeader>
-                          <CardTitle>Week Ending {format(new Date(reflection.weekEndDate), "MMM d")}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="whitespace-pre-wrap">{reflection.reflection}</p>
-                          <div className={cn(
-                            "mt-2 font-medium",
-                            reflection.pnl > 0 ? "text-green-500" : "text-red-500"
-                          )}>
-                            Weekly P&L: {reflection.pnl.toFixed(2)} {reflection.currency}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                </div>
               </div>
             </div>
           )}
