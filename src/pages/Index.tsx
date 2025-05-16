@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTradingData } from "@/hooks/useTradingData";
 import { useTradeOperations } from "@/hooks/useTradeOperations";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { DailyJournal } from "@/types/trade";
 
 export default function Index() {
   const { user, signOut } = useAuth();
@@ -31,6 +32,16 @@ export default function Index() {
     calculateTradeStatistics
   } = useTradeOperations(trades, setTrades, weeklyReflections, setWeeklyReflections, dailyJournals, setDailyJournals, user?.id);
 
+  // Create adapter function to match the expected signature
+  const handleSaveDailyJournalAdapter = (dateStr: string, content: string) => {
+    const journal: DailyJournal = {
+      id: Date.now().toString(),
+      date: dateStr,
+      content
+    };
+    handleSaveDailyJournal(journal);
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -49,7 +60,7 @@ export default function Index() {
         onAddTrade={handleAddTrade}
         onEditTrade={handleEditTrade}
         onDeleteTrade={handleDeleteTrade}
-        onSaveDailyJournal={handleSaveDailyJournal}
+        onSaveDailyJournal={handleSaveDailyJournalAdapter}
         onSaveWeeklyReflection={handleSaveReflection}
         economicEvents={economicEvents}
         calculateTradeStatistics={calculateTradeStatistics}

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,42 +34,44 @@ export function useTradingData(userId?: string) {
           
         if (tradesError) throw tradesError;
         
+        // Transform database rows to Trade objects
+        const transformedTrades: Trade[] = tradesData.map(row => ({
+          id: row.id,
+          date: new Date(row.date),
+          ticker: row.ticker,
+          direction: row.direction || "long", // Add default for backward compatibility
+          riskR: row.risk_r,
+          potentialR: row.potential_r,
+          rValue: row.r_value,
+          currency: row.currency as "USD" | "EUR",
+          outcome: row.outcome as "win" | "loss",
+          actualR: row.actual_r,
+          pnl: row.pnl,
+          entryReason: row.entry_reason || "",
+          exitReason: row.exit_reason || "",
+          screenshot: row.screenshot,
+          reflection: {
+            whatWentWrong: row.what_went_wrong || "",
+            whatWentRight: row.what_went_right || "",
+            followedPlan: row.followed_plan ?? true,
+            emotions: {
+              before: row.emotion_before || "",
+              during: row.emotion_during || "",
+              after: row.emotion_after || "",
+            }
+          }
+        }));
+        
         // Organize trades by date
         const organizedTrades: DailyTrades = {};
-        tradesData?.forEach(trade => {
+        transformedTrades.forEach(trade => {
           const dateStr = format(new Date(trade.date), "yyyy-MM-dd");
-          
-          const formattedTrade: Trade = {
-            id: trade.id,
-            date: new Date(trade.date),
-            ticker: trade.ticker,
-            riskR: Number(trade.risk_r),
-            potentialR: Number(trade.potential_r),
-            rValue: Number(trade.r_value),
-            currency: trade.currency as "USD" | "EUR",
-            outcome: trade.outcome as "win" | "loss",
-            actualR: Number(trade.actual_r),
-            pnl: Number(trade.pnl),
-            entryReason: trade.entry_reason || "",
-            exitReason: trade.exit_reason || "",
-            screenshot: trade.screenshot,
-            reflection: {
-              whatWentWrong: trade.what_went_wrong || "",
-              whatWentRight: trade.what_went_right || "",
-              followedPlan: trade.followed_plan,
-              emotions: {
-                before: trade.emotion_before || "",
-                during: trade.emotion_during || "",
-                after: trade.emotion_after || "",
-              },
-            },
-          };
           
           if (!organizedTrades[dateStr]) {
             organizedTrades[dateStr] = [];
           }
           
-          organizedTrades[dateStr].push(formattedTrade);
+          organizedTrades[dateStr].push(trade);
         });
         
         setTrades(organizedTrades);
