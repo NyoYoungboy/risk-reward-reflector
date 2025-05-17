@@ -40,7 +40,7 @@ export function useTradingData(userId?: string) {
           id: row.id,
           date: new Date(row.date),
           ticker: row.ticker,
-          direction: row.direction || "long", // Default to "long" if direction is not specified
+          direction: (row.direction || "long") as "long" | "short", // Cast to the specific union type
           riskR: row.risk_r,
           potentialR: row.potential_r,
           rValue: row.r_value,

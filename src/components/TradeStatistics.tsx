@@ -37,7 +37,7 @@ export function TradeStatisticsSummary({ stats, title }: TradeStatisticsProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mt-2">
+          <div className="grid grid-cols-3 gap-2 mt-2">
             <div>
               <div className="text-sm text-muted-foreground">Winning Trades</div>
               <div className="text-lg font-medium text-green-500">
@@ -48,6 +48,13 @@ export function TradeStatisticsSummary({ stats, title }: TradeStatisticsProps) {
               <div className="text-sm text-muted-foreground">Losing Trades</div>
               <div className="text-lg font-medium text-red-500">
                 {stats.lossCount}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Breakeven</div>
+              <div className="text-lg font-medium text-gray-500">
+                {/* Calculate breakeven count from total trades */}
+                {stats.longStats.count + stats.shortStats.count - stats.winCount - stats.lossCount}
               </div>
             </div>
           </div>
