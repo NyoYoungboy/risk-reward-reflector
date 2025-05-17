@@ -10,7 +10,7 @@ export const tradeFormSchema = z.object({
   potentialR: z.coerce.number(),
   rValue: z.coerce.number(),
   currency: z.enum(["USD", "EUR"]),
-  outcome: z.enum(["win", "loss"]),
+  outcome: z.enum(["win", "loss", "breakeven"]),
   actualR: z.coerce.number(),
   entryReason: z.string(),
   exitReason: z.string(),

@@ -107,6 +107,7 @@ export function TradeBasicFields({ form }: TradeBasicFieldsProps) {
               <SelectContent>
                 <SelectItem value="win">Win</SelectItem>
                 <SelectItem value="loss">Loss</SelectItem>
+                <SelectItem value="breakeven">Breakeven</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />

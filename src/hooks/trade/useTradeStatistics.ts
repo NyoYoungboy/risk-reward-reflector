@@ -28,26 +28,35 @@ export function useTradeStatistics() {
     }
     
     const winningTrades = trades.filter(trade => trade.outcome === "win");
+    const losingTrades = trades.filter(trade => trade.outcome === "loss");
+    const breakevenTrades = trades.filter(trade => trade.outcome === "breakeven");
+    
     const winCount = winningTrades.length;
-    const lossCount = trades.length - winCount;
-    const winRate = trades.length > 0 ? winCount / trades.length : 0;
+    const lossCount = losingTrades.length;
+    // We only count wins and losses for win rate, excluding breakeven trades
+    const totalWinLossTrades = winCount + lossCount;
+    const winRate = totalWinLossTrades > 0 ? winCount / totalWinLossTrades : 0;
     const totalPnl = trades.reduce((sum, trade) => sum + trade.pnl, 0);
     const currency = trades.length > 0 ? trades[0].currency : "USD";
     
     // Long trades statistics
     const longTrades = trades.filter(trade => trade.direction === "long");
     const longWinningTrades = longTrades.filter(trade => trade.outcome === "win");
+    const longLosingTrades = longTrades.filter(trade => trade.outcome === "loss");
     const longWinCount = longWinningTrades.length;
-    const longLossCount = longTrades.length - longWinCount;
-    const longWinRate = longTrades.length > 0 ? longWinCount / longTrades.length : 0;
+    const longLossCount = longLosingTrades.length;
+    const longTotalWinLossTrades = longWinCount + longLossCount;
+    const longWinRate = longTotalWinLossTrades > 0 ? longWinCount / longTotalWinLossTrades : 0;
     const longTotalPnl = longTrades.reduce((sum, trade) => sum + trade.pnl, 0);
     
     // Short trades statistics
     const shortTrades = trades.filter(trade => trade.direction === "short");
     const shortWinningTrades = shortTrades.filter(trade => trade.outcome === "win");
+    const shortLosingTrades = shortTrades.filter(trade => trade.outcome === "loss");
     const shortWinCount = shortWinningTrades.length;
-    const shortLossCount = shortTrades.length - shortWinCount;
-    const shortWinRate = shortTrades.length > 0 ? shortWinCount / shortTrades.length : 0;
+    const shortLossCount = shortLosingTrades.length;
+    const shortTotalWinLossTrades = shortWinCount + shortLossCount;
+    const shortWinRate = shortTotalWinLossTrades > 0 ? shortWinCount / shortTotalWinLossTrades : 0;
     const shortTotalPnl = shortTrades.reduce((sum, trade) => sum + trade.pnl, 0);
     
     return { 

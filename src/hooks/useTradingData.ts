@@ -45,7 +45,7 @@ export function useTradingData(userId?: string) {
           potentialR: row.potential_r,
           rValue: row.r_value,
           currency: row.currency as "USD" | "EUR",
-          outcome: row.outcome as "win" | "loss",
+          outcome: row.outcome as "win" | "loss" | "breakeven",
           actualR: row.actual_r,
           pnl: row.pnl,
           entryReason: row.entry_reason || "",

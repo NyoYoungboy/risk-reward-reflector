@@ -78,6 +78,7 @@ export type Database = {
           created_at: string | null
           currency: string
           date: string
+          direction: string | null
           emotion_after: string | null
           emotion_before: string | null
           emotion_during: string | null
@@ -102,6 +103,7 @@ export type Database = {
           created_at?: string | null
           currency: string
           date: string
+          direction?: string | null
           emotion_after?: string | null
           emotion_before?: string | null
           emotion_during?: string | null
@@ -126,6 +128,7 @@ export type Database = {
           created_at?: string | null
           currency?: string
           date?: string
+          direction?: string | null
           emotion_after?: string | null
           emotion_before?: string | null
           emotion_during?: string | null

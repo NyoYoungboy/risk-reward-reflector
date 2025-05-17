@@ -8,7 +8,7 @@ export interface Trade {
   potentialR: number;
   rValue: number;
   currency: "USD" | "EUR";
-  outcome: "win" | "loss";
+  outcome: "win" | "loss" | "breakeven";
   actualR: number;
   pnl: number;
   entryReason: string;
