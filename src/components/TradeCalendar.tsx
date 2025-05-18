@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { format, startOfMonth, endOfMonth, isSaturday, isSunday, isLastDayOfMonth, startOfWeek, endOfWeek, addDays } from "date-fns";
@@ -116,12 +115,11 @@ export function TradeCalendar({
     }
 
     if (isSaturday(date)) {
-      const { stats } = calculateWeeklyStats(date);
+      // First show the daily recap so user can see their trades
+      setIsDailyRecapOpen(true);
       
-      setCurrentWeekPnL(stats.totalPnl);
-      setCurrentWeekCurrency(stats.currency);
-      
-      setIsWeeklyReflectionOpen(true);
+      // We'll keep the weekly reflection as a separate option they can access
+      // via a button in the daily recap dialog
     } else if (isSunday(date)) {
       setIsDailyRecapOpen(true);
     } else {
@@ -203,26 +201,51 @@ export function TradeCalendar({
     }
 
     if (isSaturday(day)) {
+      // Show both weekly summary info and any trades on Saturday
       const { stats } = calculateWeeklyStats(day);
       
-      if (dayTrades.length === 0 && !hasJournal) {
-        return (
-          <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(day)}>
-            <div className="text-xs font-medium text-violet-500">
-              Weekly Summary
-            </div>
-            <div className={cn(
-              "text-xs font-medium",
-              stats.totalPnl > 0 ? "text-green-500" : "text-red-500"
-            )}>
-              {stats.totalPnl.toFixed(2)} {stats.currency}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Win rate: {(stats.winRate * 100).toFixed(0)}%
-            </div>
+      const elements = [];
+      
+      // Show weekly summary info
+      elements.push(
+        <div key="weekly-summary" className="text-xs font-medium text-violet-500">
+          Weekly Summary
+        </div>
+      );
+      
+      elements.push(
+        <div key="pnl" className={cn(
+          "text-xs font-medium",
+          stats.totalPnl > 0 ? "text-green-500" : "text-red-500"
+        )}>
+          {stats.totalPnl.toFixed(2)} {stats.currency}
+        </div>
+      );
+      
+      // If there are trades on this Saturday, show them too
+      if (dayTrades.length > 0) {
+        const totalPnL = dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
+        
+        elements.push(
+          <div key="trades" className="text-xs text-muted-foreground mt-1">
+            {dayTrades.length} trade{dayTrades.length > 1 ? "s" : ""} today
           </div>
         );
       }
+      
+      if (hasJournal) {
+        elements.push(
+          <div key="journal" className="text-xs font-medium text-amber-500">
+            Journal
+          </div>
+        );
+      }
+      
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(day)}>
+          {elements}
+        </div>
+      );
     }
 
     if (isSunday(day)) {
@@ -433,6 +456,7 @@ export function TradeCalendar({
             {selectedDate && (
               <>
                 {isSunday(selectedDate) ? (
+                  // ... keep existing code for Sunday view
                   <div className="space-y-4">
                     {(() => {
                       const nextWeekStart = selectedDate;
@@ -508,6 +532,21 @@ export function TradeCalendar({
                       title="Daily Trading Journal"
                       placeholder="Record your thoughts about the trading day. Market conditions, personal state of mind, ideas, and potential setups."
                     />
+                    
+                    {/* Show Weekly Reflection button on Saturday */}
+                    {isSaturday(selectedDate) && (
+                      <div className="flex justify-end mb-4">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setIsDailyRecapOpen(false);
+                            setIsWeeklyReflectionOpen(true);
+                          }}
+                        >
+                          Weekly Reflection
+                        </Button>
+                      </div>
+                    )}
                     
                     {/* Trades List */}
                     <div className="mt-6">
@@ -596,7 +635,7 @@ export function TradeCalendar({
         </DialogContent>
       </Dialog>
 
-      {/* Monthly Recap Dialog */}
+      {/* Monthly Recap Dialog - Added trade deletion functionality */}
       <Dialog open={isMonthlyRecapOpen} onOpenChange={setIsMonthlyRecapOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -625,6 +664,7 @@ export function TradeCalendar({
                       <TableHead>Outcome</TableHead>
                       <TableHead>Actual R</TableHead>
                       <TableHead>P&L</TableHead>
+                      <TableHead className="w-20">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -640,6 +680,49 @@ export function TradeCalendar({
                           trade.pnl > 0 ? "text-green-500" : "text-red-500"
                         )}>
                           {trade.pnl.toFixed(2)} {trade.currency}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-blue-500 hover:text-blue-600"
+                              onClick={() => {
+                                setSelectedTrade(trade);
+                                setIsEditDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-red-500 hover:text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Trade</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this {trade.ticker} trade? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-red-500 hover:bg-red-600"
+                                    onClick={() => handleDeleteTrade(trade.id, trade.date)}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
