@@ -47,6 +47,36 @@ export function CalendarDayContent({ date }: CalendarDayContentProps) {
     );
   }
 
+  if (isSunday(date)) {
+    // Get the stats for the previous week (Sunday to Saturday)
+    const previousWeekEnd = new Date(date);
+    previousWeekEnd.setDate(date.getDate() - 1); // Get Saturday (end of previous week)
+    const { stats } = calculateWeeklyStats(previousWeekEnd);
+    
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(date)}>
+        <div className="text-xs font-medium text-violet-500">
+          Week Summary
+        </div>
+        <div className={cn(
+          "text-xs font-medium",
+          stats.totalPnl > 0 ? "text-green-500" : "text-red-500"
+        )}>
+          {stats.totalPnl.toFixed(2)} {stats.currency}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Win rate: {(stats.winRate * 100).toFixed(0)}%
+        </div>
+        {/* Show long/short stats */}
+        <div className="text-[10px] text-muted-foreground">
+          L:{stats.longStats.count} S:{stats.shortStats.count}
+        </div>
+        {/* Show upcoming events if any */}
+        {upcomingEventsCheck(date, economicEvents)}
+      </div>
+    );
+  }
+  
   if (isSaturday(date)) {
     const { stats } = calculateWeeklyStats(date);
     
@@ -64,33 +94,6 @@ export function CalendarDayContent({ date }: CalendarDayContentProps) {
         {hasJournal && (
           <div className="text-xs font-medium text-amber-500">
             Journal
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (isSunday(date)) {
-    const nextWeekStart = date;
-    const nextWeekEnd = new Date(date);
-    nextWeekEnd.setDate(date.getDate() + 6);
-    let upcomingEventsCount = 0;
-
-    for (let d = new Date(nextWeekStart); d <= nextWeekEnd; d.setDate(d.getDate() + 1)) {
-      const nextDateStr = format(d, "yyyy-MM-dd");
-      if (economicEvents[nextDateStr]) {
-        upcomingEventsCount += economicEvents[nextDateStr].length;
-      }
-    }
-
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(date)}>
-        <div className="text-xs font-medium text-blue-500">
-          Week Ahead
-        </div>
-        {upcomingEventsCount > 0 && (
-          <div className="text-xs text-muted-foreground">
-            {upcomingEventsCount} economic event{upcomingEventsCount > 1 ? 's' : ''}
           </div>
         )}
       </div>
@@ -139,6 +142,31 @@ export function CalendarDayContent({ date }: CalendarDayContentProps) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(date)}>
         {elements}
+      </div>
+    );
+  }
+  
+  return null;
+}
+
+// Helper function to check for upcoming events
+function upcomingEventsCheck(date: Date, economicEvents: any) {
+  const nextWeekStart = date;
+  const nextWeekEnd = new Date(date);
+  nextWeekEnd.setDate(date.getDate() + 6);
+  let upcomingEventsCount = 0;
+
+  for (let d = new Date(nextWeekStart); d <= nextWeekEnd; d.setDate(d.getDate() + 1)) {
+    const nextDateStr = format(d, "yyyy-MM-dd");
+    if (economicEvents[nextDateStr]) {
+      upcomingEventsCount += economicEvents[nextDateStr].length;
+    }
+  }
+
+  if (upcomingEventsCount > 0) {
+    return (
+      <div className="text-[10px] text-muted-foreground">
+        {upcomingEventsCount} econ event{upcomingEventsCount > 1 ? 's' : ''}
       </div>
     );
   }
