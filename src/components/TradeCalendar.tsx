@@ -178,6 +178,7 @@ export function TradeCalendar({
     const hasJournal = dailyJournals.some(j => j.date === dateStr);
     
     if (isLastDayOfMonth(day)) {
+      // ... keep existing code (month end display)
       const { stats } = calculateMonthlyStats(day);
       return (
         <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(day)}>
@@ -201,49 +202,25 @@ export function TradeCalendar({
     }
 
     if (isSaturday(day)) {
-      // Show both weekly summary info and any trades on Saturday
+      // Show only weekly summary info on Saturday - no trades
       const { stats } = calculateWeeklyStats(day);
-      
-      const elements = [];
-      
-      // Show weekly summary info
-      elements.push(
-        <div key="weekly-summary" className="text-xs font-medium text-violet-500">
-          Weekly Summary
-        </div>
-      );
-      
-      elements.push(
-        <div key="pnl" className={cn(
-          "text-xs font-medium",
-          stats.totalPnl > 0 ? "text-green-500" : "text-red-500"
-        )}>
-          {stats.totalPnl.toFixed(2)} {stats.currency}
-        </div>
-      );
-      
-      // If there are trades on this Saturday, show them too
-      if (dayTrades.length > 0) {
-        const totalPnL = dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
-        
-        elements.push(
-          <div key="trades" className="text-xs text-muted-foreground mt-1">
-            {dayTrades.length} trade{dayTrades.length > 1 ? "s" : ""} today
-          </div>
-        );
-      }
-      
-      if (hasJournal) {
-        elements.push(
-          <div key="journal" className="text-xs font-medium text-amber-500">
-            Journal
-          </div>
-        );
-      }
       
       return (
         <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => handleDayClick(day)}>
-          {elements}
+          <div className="text-xs font-medium text-violet-500">
+            Weekly Summary
+          </div>
+          <div className={cn(
+            "text-xs font-medium",
+            stats.totalPnl > 0 ? "text-green-500" : "text-red-500"
+          )}>
+            {stats.totalPnl.toFixed(2)} {stats.currency}
+          </div>
+          {hasJournal && (
+            <div className="text-xs font-medium text-amber-500">
+              Journal
+            </div>
+          )}
         </div>
       );
     }
