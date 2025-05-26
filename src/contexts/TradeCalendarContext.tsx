@@ -48,6 +48,7 @@ export function TradeCalendarProvider({
     weeklyReflection,
     currentWeekPnL,
     currentWeekCurrency,
+    setSelectedDate, // Add this missing parameter
     setIsDialogOpen,
     setIsEditDialogOpen,
     setSelectedTrade,

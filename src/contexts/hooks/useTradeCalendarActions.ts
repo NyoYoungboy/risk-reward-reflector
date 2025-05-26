@@ -8,6 +8,7 @@ export function useTradeCalendarActions(
   weeklyReflection: string,
   currentWeekPnL: number,
   currentWeekCurrency: string,
+  setSelectedDate: React.Dispatch<React.SetStateAction<Date | undefined>>,
   setIsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>,
   setIsEditDialogOpen: React.Dispatch<React.SetStateAction<boolean>>,
   setSelectedTrade: React.Dispatch<React.SetStateAction<Trade | null>>,
@@ -23,16 +24,20 @@ export function useTradeCalendarActions(
   const { toast } = useToast();
 
   const handleDayClick = (date: Date) => {
+    setSelectedDate(date);
+    
+    // Check if it's the last day of the month (month-end)
     if (date.getDate() === new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()) {
       setIsMonthlyRecapOpen(true);
       return;
     }
 
-    if (date.getDay() === 6) { // Saturday
-      setIsDailyRecapOpen(true);
-    } else if (date.getDay() === 0) { // Sunday - open weekly reflection
+    if (date.getDay() === 6) { // Saturday - open weekly reflection for journaling
+      setIsWeeklyReflectionOpen(true);
+    } else if (date.getDay() === 0) { // Sunday - open weekly reflection to view summary
       setIsWeeklyReflectionOpen(true);
     } else {
+      // Regular day - open daily recap to add trades/journal
       setIsDailyRecapOpen(true);
     }
   };
