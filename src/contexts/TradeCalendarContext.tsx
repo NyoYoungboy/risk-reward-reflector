@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState } from "react";
 import { format } from "date-fns";
 import type { Trade, TradeStatistics, DailyTrades, DailyJournal } from "@/types/trade";
@@ -140,8 +139,8 @@ export function TradeCalendarProvider({
 
     if (date.getDay() === 6) { // Saturday
       setIsDailyRecapOpen(true);
-    } else if (date.getDay() === 0) { // Sunday
-      setIsDailyRecapOpen(true);
+    } else if (date.getDay() === 0) { // Sunday - open weekly reflection
+      setIsWeeklyReflectionOpen(true);
     } else {
       setIsDailyRecapOpen(true);
     }
