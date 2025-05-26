@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState } from "react";
+import type { Trade } from "@/types/trade";
 import type { TradeCalendarContextProps, TradeCalendarProviderProps } from "./types/TradeCalendarTypes";
 import { useTradeCalendarStats } from "./hooks/useTradeCalendarStats";
 import { useTradeCalendarActions } from "./hooks/useTradeCalendarActions";
