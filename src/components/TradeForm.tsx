@@ -2,6 +2,7 @@
 import React from "react";
 import { Trade } from "@/types/trade";
 import { TradeFormBase } from "./trade-form/TradeFormBase";
+import { useTradeCalendar } from "@/contexts/TradeCalendarContext";
 
 interface TradeFormProps {
   onSubmit: (data: Trade) => void;
@@ -9,12 +10,18 @@ interface TradeFormProps {
   defaultDate?: Date;
 }
 
-export function TradeForm({ onSubmit, onCancel, defaultDate = new Date() }: TradeFormProps) {
+export function TradeForm({ onSubmit, onCancel, defaultDate }: TradeFormProps) {
+  const { selectedDate } = useTradeCalendar();
+  
+  // Use selectedDate from context if available, otherwise use defaultDate or today
+  const formDate = selectedDate || defaultDate || new Date();
+  
   return (
     <TradeFormBase
       onSubmit={onSubmit}
       onCancel={onCancel}
       isEditing={false}
+      defaultDate={formDate}
       defaultValues={{
         ticker: "",
         direction: "long",

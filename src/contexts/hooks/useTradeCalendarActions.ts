@@ -24,22 +24,26 @@ export function useTradeCalendarActions(
   const { toast } = useToast();
 
   const handleDayClick = (date: Date) => {
+    // ALWAYS set the selected date first
     setSelectedDate(date);
     
-    // Check if it's the last day of the month (month-end)
-    if (date.getDate() === new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()) {
-      setIsMonthlyRecapOpen(true);
-      return;
-    }
+    // Small delay to ensure state is updated before opening dialogs
+    setTimeout(() => {
+      // Check if it's the last day of the month (month-end)
+      if (date.getDate() === new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()) {
+        setIsMonthlyRecapOpen(true);
+        return;
+      }
 
-    if (date.getDay() === 6) { // Saturday - open weekly reflection for journaling
-      setIsWeeklyReflectionOpen(true);
-    } else if (date.getDay() === 0) { // Sunday - open weekly reflection to view summary
-      setIsWeeklyReflectionOpen(true);
-    } else {
-      // Regular day - open daily recap to add trades/journal
-      setIsDailyRecapOpen(true);
-    }
+      if (date.getDay() === 6) { // Saturday - open weekly reflection for journaling
+        setIsWeeklyReflectionOpen(true);
+      } else if (date.getDay() === 0) { // Sunday - open weekly reflection to view summary
+        setIsWeeklyReflectionOpen(true);
+      } else {
+        // Regular day - open daily recap to add trades/journal
+        setIsDailyRecapOpen(true);
+      }
+    }, 10);
   };
 
   const handleAddTrade = (trade: Trade) => {
